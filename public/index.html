@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIM-PERSEDIAAN | Rutan Kelas IV B Siak Sri Indrapura</title>
+  <meta name="description" content="Sistem Informasi Pengelolaan Persediaan Kantor dan Register Opname Fisik Rutan Kelas IV B Siak Sri Indrapura.">
+  <!-- Favicon SVG Data URI -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230b192c'/%3E%3Cpath d='M50 20 L78 32 V52 C78 70 50 82 50 82 C50 82 22 70 22 52 V32 Z' fill='%232563eb'/%3E%3Cpath d='M42 50 L48 56 L60 42' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0b192c">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+  <!-- ====================================================================
+       HALAMAN DEPAN / PORTAL LOGIN KEAMANAN PENGGUNA RESMI
+       SISTEM INFORMASI MANAJEMEN PERSEDIAAN (SIM-PERSEDIAAN)
+       ==================================================================== -->
+  <div id="loginPortal" class="login-portal">
+    <!-- Glowing backdrop meshes -->
+    <div class="login-bg-mesh mesh-1"></div>
+    <div class="login-bg-mesh mesh-2"></div>
+    <div class="login-grid-lines"></div>
+
+    <div class="login-portal-wrapper">
+      
+      <!-- Top Brand Card -->
+      <div class="login-card">
+        
+        <!-- Header Banner with Ministry Identity -->
+        <div class="login-card-header">
+          <div class="login-emblem-wrapper">
+            <div class="login-emblem-ring"></div>
+            <div class="login-emblem-core">
+              <i class="bi bi-shield-lock-fill"></i>
+            </div>
+          </div>
+
+          <div class="login-header-text">
+            <div class="login-kemen-tag">
+              <i class="bi bi-award-fill"></i> KEMENTERIAN IMIGRASI DAN PEMASYARAKATAN R.I.
+            </div>
+            <h1 class="login-satker-title">RUTAN KELAS II B SIAK SRI INDRAPURA</h1>
+            <div class="login-sys-badge">
+              <span class="badge-dot"></span>
+              <span>PORTAL RESMI &bull; SIM-PERSEDIAAN BMN</span>
+            </div>
+            <div class="login-uakpb-pill">
+              <i class="bi bi-hash"></i> KODE UAKPB: <strong>137.04.0900.692310.000.KD</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Bar -->
+        <div class="login-security-strip">
+          <div class="sec-left">
+            <i class="bi bi-lock-fill text-primary"></i>
+            <span>Akses Terenkripsi &bull; Khusus Pejabat & Operator Terdaftar</span>
+          </div>
+          <div class="sec-clock" id="loginLiveClock">
+            <i class="bi bi-clock-fill"></i> <span>--:--:-- WIB</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Alert Box -->
+        <div id="loginAlertBox" class="login-alert-box" style="display: none;" role="alert"></div>
+
+        <!-- Main Login Form -->
+        <form id="loginForm" class="login-form-body" novalidate>
+          <div class="login-form-group">
+            <label for="loginUsername">
+              <i class="bi bi-person-badge-fill"></i>
+              <span>Username atau NIP Petugas</span>
+            </label>
+            <div class="login-input-box">
+              <i class="bi bi-person input-leading-icon"></i>
+              <input 
+                type="text" 
+                id="loginUsername" 
+                name="username" 
+                class="login-input-field" 
+                placeholder="Masukkan username atau NIP (contoh: fajar)" 
+                required 
+                autocomplete="username"
+                autofocus
+              >
+              <button type="button" class="login-input-clear-btn" id="btnClearUsername" title="Hapus teks" style="display:none;">
+                <i class="bi bi-x-circle-fill"></i>
+              </button>
+            </div>
+            <div class="input-hint">Dapat menggunakan username pendek atau 18 digit NIP resmi.</div>
+          </div>
+
+          <div class="login-form-group">
+            <div class="label-with-action">
+              <label for="loginPassword">
+                <i class="bi bi-key-fill"></i>
+                <span>Kata Sandi (Password)</span>
+              </label>
+              <button type="button" class="btn-text-link" id="btnHelpModalTrigger">
+                <i class="bi bi-question-circle"></i> Bantuan Masuk
+              </button>
+            </div>
+            <div class="login-input-box">
+              <i class="bi bi-shield-lock input-leading-icon"></i>
+              <input 
+                type="password" 
+                id="loginPassword" 
+                name="password" 
+                class="login-input-field" 
+                placeholder="Masukkan kata sandi akun" 
+                required 
+                autocomplete="current-password"
+              >
+              <button type="button" class="login-toggle-pw-btn" id="btnTogglePassword" title="Lihat/Sembunyikan Kata Sandi">
+                <i class="bi bi-eye" id="togglePasswordIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="login-options-row">
+            <label class="remember-checkbox-label" for="loginRemember">
+              <input type="checkbox" id="loginRemember" checked>
+              <span class="custom-check-box"></span>
+              <span class="remember-text">Ingat sesi masuk di perangkat ini (30 Hari)</span>
+            </label>
+            <span class="security-chip">
+              <i class="bi bi-shield-check"></i> Sesi Aman
+            </span>
+          </div>
+
+          <button type="submit" class="btn-login-submit" id="btnLoginSubmit">
+            <span class="btn-submit-normal">
+              <i class="bi bi-box-arrow-in-right"></i> Masuk ke SIM-Persediaan
+            </span>
+            <span class="btn-submit-loading" style="display:none;">
+              <span class="spinner-auth"></span> Mengotentikasi Akun...
+            </span>
+          </button>
+        </form>
+
+        <!-- Fast Login Demo / Selection Panel (Sangat Memudahkan Pengguna) -->
+        <div class="quick-credentials-panel">
+          <div class="quick-panel-heading">
+            <div class="panel-divider"></div>
+            <span class="panel-badge-title">
+              <i class="bi bi-person-check-fill"></i> AKUN RESMI PEJABAT PENGELOLA (KLIK UNTUK ISI OTOMATIS)
+            </span>
+            <div class="panel-divider"></div>
+          </div>
+
+          <p class="quick-panel-desc">
+            Pilih salah satu profil pejabat di bawah ini untuk menguji hak akses persediaan secara langsung:
+          </p>
+
+          <div class="quick-users-grid">
+            
+            <!-- Fajar Gustiawan -->
+            <button type="button" class="quick-user-card" data-username="fajar" data-password="fajar123" title="Klik untuk mengisi akun Fajar Gustiawan">
+              <div class="qu-avatar" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">FG</div>
+              <div class="qu-meta">
+                <div class="qu-name">Fajar Gustiawan, S.E</div>
+                <div class="qu-role">Pengelola Aset & Persediaan (BMN)</div>
+                <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>fajar</strong> &bull; Sandi: <strong>fajar123</strong></div>
+              </div>
+              <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
+            </button>
+
+            <!-- Muhammad Kurniawan -->
+            <button type="button" class="quick-user-card" data-username="kurniawan" data-password="kurniawan123" title="Klik untuk mengisi akun Bendahara">
+              <div class="qu-avatar" style="background: linear-gradient(135deg, #0d9488, #059669);">MK</div>
+              <div class="qu-meta">
+                <div class="qu-name">Muhammad Kurniawan, S.E.</div>
+                <div class="qu-role">Bendahara Pengeluaran</div>
+                <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>kurniawan</strong> &bull; Sandi: <strong>kurniawan123</strong></div>
+              </div>
+              <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
+            </button>
+
+            <!-- Rizky Firmansyah -->
+            <button type="button" class="quick-user-card" data-username="rizky" data-password="rizky123" title="Klik untuk mengisi akun Rencana Anggaran">
+              <div class="qu-avatar" style="background: linear-gradient(135deg, #d97706, #b45309);">RF</div>
+              <div class="qu-meta">
+                <div class="qu-name">Rizky Firmansyah, S.E.</div>
+                <div class="qu-role">Penyusunan Rencana Anggaran</div>
+                <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>rizky</strong> &bull; Sandi: <strong>rizky123</strong></div>
+              </div>
+              <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
+            </button>
+
+            <!-- Kepala Rutan -->
+            <button type="button" class="quick-user-card" data-username="karutan" data-password="karutan123" title="Klik untuk mengisi akun Kepala Rutan">
+              <div class="qu-avatar" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">DK</div>
+              <div class="qu-meta">
+                <div class="qu-name">Dedy Krihastoni, A.Md.IP,S.H</div>
+                <div class="qu-role">Kepala Rutan (KPA)</div>
+                <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>karutan</strong> &bull; Sandi: <strong>karutan123</strong></div>
+              </div>
+              <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
+            </button>
+
+            <!-- Administrator Sistem -->
+            <button type="button" class="quick-user-card quick-user-admin" data-username="admin" data-password="adminrutan2026" title="Klik untuk mengisi akun Super Administrator">
+              <div class="qu-avatar" style="background: linear-gradient(135deg, #e11d48, #9f1239);">ADM</div>
+              <div class="qu-meta">
+                <div class="qu-name">Administrator Sistem BMN</div>
+                <div class="qu-role">Hak Akses Penuh Sistem & Pengaturan</div>
+                <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>admin</strong> &bull; Sandi: <strong>adminrutan2026</strong></div>
+              </div>
+              <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Card Legal Notice Footer -->
+        <div class="login-card-footer">
+          <div class="legal-warning-text">
+            <i class="bi bi-shield-fill-exclamation text-amber"></i>
+            <span><strong>PERINGATAN RESMI:</strong> Sistem Informasi ini hanya diperuntukkan bagi pegawai dan pejabat berwenang Rutan Siak. Akses tidak sah atau percobaan penerobosan data BMN akan dicatat dalam Log Audit Keamanan.</span>
+          </div>
+          <div class="legal-copy-meta">
+            <span>&copy; 2026 Rutan Kelas II B Siak Sri Indrapura</span>
+            <span>&bull;</span>
+            <span>Ditjenpas Riau</span>
+            <span>&bull;</span>
+            <span class="version-tag">SIM-PERSEDIAAN v4.2 SECURE</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER (TERLINDUNGI & DIKUNCI HINGGA LOGIN BERHASIL) -->
+  <div class="app-container" id="appContainer" style="display: none;">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="emblem-icon">
+          <img src="logo-kemenimipas.png" alt="Logo Kemenimipas" style="width:36px;height:36px;object-fit:contain;">
+        </div>
+        <div class="header-meta">
+          <h2>SIM-PERSEDIAAN</h2>
+          <span>RUTAN KELAS IIB SIAK</span>
+          <div class="uakpb-badge">UAKPB: 137.04.0900.692310.000.KD</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Menu Utama</div>
+        <div class="nav-item active" data-tab="dashboard">
+          <i class="bi bi-grid-1x2-fill"></i>
+          <span>Dashboard Ringkasan</span>
+        </div>
+        <div class="nav-item" data-tab="inventory">
+          <i class="bi bi-box-seam-fill"></i>
+          <span>Katalog Persediaan</span>
+          <span class="nav-badge" id="navBadgeTotal">Master</span>
+        </div>
+        <div class="nav-item" data-tab="transactions">
+          <i class="bi bi-arrow-left-right"></i>
+          <span>Mutasi & Transaksi</span>
+        </div>
+
+        <div class="nav-section-title">Tata Kelola & Laporan</div>
+        <div class="nav-item" data-tab="officers">
+          <i class="bi bi-people-fill"></i>
+          <span>Pengelola Keuangan</span>
+        </div>
+        <div class="nav-item" data-tab="reports">
+          <i class="bi bi-printer-fill"></i>
+          <span>Cetak Dokumen Resmi</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-quick-profile">
+          <div class="user-avatar-circle" id="sidebarFootAvatar">FG</div>
+          <div class="user-info-text">
+            <div class="name" id="sidebarFootOfficerName">Fajar Gustiawan, S.E</div>
+            <div class="role" id="sidebarFootOfficerRole">Aset & Persediaan</div>
+          </div>
+          <button type="button" class="btn-sidebar-logout" id="sidebarLogoutBtn" title="Keluar dari akun">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+      <!-- TOP NAVIGATION BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle-btn" id="menuToggleBtn">
+            <i class="bi bi-list"></i>
+          </button>
+          <div class="page-title-box">
+            <h1 id="pageMainTitle">Beranda & Ringkasan Persediaan</h1>
+            <p>Kementerian Imigrasi dan Pemasyarakatan R.I. &bull; Ditjenpas Riau &bull; Periode: Juni 2026</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="topbar-officer-pill">
+            <i class="bi bi-person-badge-fill" style="color:var(--primary-500);"></i>
+            <span style="font-size:11px;color:var(--text-muted);">Operator Aktif:</span>
+            <select class="officer-select" id="topbarOfficerSelect">
+              <option value="fajar">Fajar Gustiawan, S.E (Aset & Persediaan)</option>
+              <option value="kurniawan">Muhammad Kurniawan, S.E. (Bendahara)</option>
+              <option value="rizky">Rizky Firmansyah, S.E. (Rencana Anggaran)</option>
+              <option value="karutan">Dedy Krihastoni, A.Md.IP,S.H (Kepala Rutan)</option>
+            </select>
+          </div>
+
+          <button class="topbar-btn" id="themeToggleBtn" title="Ganti Tema Gelap/Terang">
+            <i class="bi bi-moon-stars"></i>
+          </button>
+
+          <button class="btn-primary-action" id="btnOpenTrxMasuk">
+            <i class="bi bi-box-arrow-in-down"></i>
+            <span>+ Barang Masuk</span>
+          </button>
+
+          <button class="btn-primary-action" style="background:linear-gradient(135deg,#0d9488,#059669);" id="btnOpenTrxKeluar">
+            <i class="bi bi-box-arrow-up-right"></i>
+            <span>+ Distribusi Keluar</span>
+          </button>
+
+          <button class="topbar-logout-btn" id="topbarLogoutBtn" title="Keluar / Logout dari Sistem">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Keluar</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT BODY -->
+      <main class="content-body">
+
+        <!-- ============================================== -->
+        <!-- TAB 1: DASHBOARD OVERVIEW -->
+        <!-- ============================================== -->
+        <section class="tab-pane active" id="tab-dashboard">
+          <!-- Hero Banner -->
+          <div class="hero-banner">
+            <div class="hero-text">
+              <h3>Sistem Informasi Pengelolaan Persediaan Kantor</h3>
+              <p>
+                Aplikasi administrasi persediaan BMN Rumah Tahanan Negara Kelas IV B Siak Sri Indrapura berdasarkan 
+                Register Transaksi Harian Barang Persediaan (Opname Fisik) Periode Bulan Juni Tahun 2026.
+              </p>
+              <div class="hero-officers">
+                <span class="officer-badge"><i class="bi bi-shield-check"></i> Bendahara: M. Kurniawan, S.E.</span>
+                <span class="officer-badge"><i class="bi bi-box-seam"></i> Aset & Persediaan: Fajar Gustiawan, S.E</span>
+                <span class="officer-badge"><i class="bi bi-calculator"></i> Perencana: Rizky Firmansyah, S.E.</span>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <button class="btn-glass" onclick="switchTab('reports')">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Cetak Dokumen UAKPB
+              </button>
+              <button class="btn-glass" onclick="switchTab('inventory')">
+                <i class="bi bi-search"></i> Buka Katalog
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card blue">
+              <div class="stat-content">
+                <div class="stat-label">Total Jenis Barang</div>
+                <div class="stat-value" id="kpiTotalJenis">0</div>
+                <div class="stat-desc">Katalog terdaftar dalam database</div>
+              </div>
+              <div class="stat-icon"><i class="bi bi-boxes"></i></div>
+            </div>
+
+            <div class="stat-card green">
+              <div class="stat-content">
+                <div class="stat-label">Barang Tersedia (Stok &gt; 0)</div>
+                <div class="stat-value" id="kpiTersedia">0</div>
+                <div class="stat-desc">Fisik aktif di gudang logistik</div>
+              </div>
+              <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+            </div>
+
+            <div class="stat-card amber">
+              <div class="stat-content">
+                <div class="stat-label">Stok Kosong / Nihil</div>
+                <div class="stat-value" id="kpiHabis">0</div>
+                <div class="stat-desc">Perlu perencanaan pengadaan</div>
+              </div>
+              <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            </div>
+
+            <div class="stat-card teal">
+              <div class="stat-content">
+                <div class="stat-label">Total Kuantitas Fisik</div>
+                <div class="stat-value" id="kpiTotalFisik">0</div>
+                <div class="stat-desc">Unit barang riil tersedia</div>
+              </div>
+              <div class="stat-icon"><i class="bi bi-layers-fill"></i></div>
+            </div>
+          </div>
+
+          <!-- Two Column Grid for Key Data -->
+          <div class="dashboard-grid">
+            <!-- Left: High Priority / In-Stock Items -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i class="bi bi-star-fill" style="color:#f59e0b;"></i>
+                  <span>Barang Persediaan Tersedia (Stok Aktif Berdasarkan Opname)</span>
+                </div>
+                <button class="btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="switchTab('inventory')">
+                  Lihat Semua
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="priority-list" id="priorityInventoryList">
+                  <!-- Dynamically Rendered -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Recent Activity / Pengelola Quick Info -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i class="bi bi-clock-history"></i>
+                  <span>Riwayat Mutasi Terkini</span>
+                </div>
+                <button class="btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="switchTab('transactions')">
+                  Detail
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="priority-list" id="dashboardRecentTrxList">
+                  <!-- Dynamically Rendered -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: INVENTORY CATALOG -->
+        <!-- ============================================== -->
+        <section class="tab-pane" id="tab-inventory">
+          <!-- Category Tabs -->
+          <div class="category-tabs">
+            <button class="cat-tab-btn active" data-cat="ALL" onclick="filterByCategoryTab('ALL')">Semua Barang</button>
+            <button class="cat-tab-btn" data-cat="Pengamanan & Senjata" onclick="filterByCategoryTab('Pengamanan & Senjata')">Pengamanan & Senjata</button>
+            <button class="cat-tab-btn" data-cat="Kebersihan & Sanitasi WBP" onclick="filterByCategoryTab('Kebersihan & Sanitasi WBP')">Kebersihan & Sanitasi WBP</button>
+            <button class="cat-tab-btn" data-cat="Obat & Medis (Klinik)" onclick="filterByCategoryTab('Obat & Medis (Klinik)')">Obat & Medis (Klinik)</button>
+            <button class="cat-tab-btn" data-cat="Alat Tulis Kantor (ATK)" onclick="filterByCategoryTab('Alat Tulis Kantor (ATK)')">Alat Tulis Kantor (ATK)</button>
+            <button class="cat-tab-btn" data-cat="Konsumsi & Perlengkapan Dapur" onclick="filterByCategoryTab('Konsumsi & Perlengkapan Dapur')">Konsumsi & Dapur</button>
+            <button class="cat-tab-btn" data-cat="Elektronik & Listrik" onclick="filterByCategoryTab('Elektronik & Listrik')">Elektronik & Listrik</button>
+            <button class="cat-tab-btn" data-cat="Perlengkapan WBP & Seragam" onclick="filterByCategoryTab('Perlengkapan WBP & Seragam')">Perlengkapan WBP</button>
+            <button class="cat-tab-btn" data-cat="Pemeliharaan & Bangunan" onclick="filterByCategoryTab('Pemeliharaan & Bangunan')">Pemeliharaan & Bangunan</button>
+          </div>
+
+          <!-- Filter & Search Controls -->
+          <div class="filter-container">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="inventorySearchInput" placeholder="Cari nama barang, kode barang, atau no dokumen...">
+            </div>
+
+            <div class="filter-actions">
+              <select class="select-filter" id="inventoryCategorySelect">
+                <!-- Dynamically populated -->
+              </select>
+
+              <select class="select-filter" id="inventoryStockStatusSelect">
+                <option value="ALL">Semua Status Stok</option>
+                <option value="IN_STOCK">Tersedia (Stok &gt; 0)</option>
+                <option value="EMPTY">Habis / Nihil (Stok = 0)</option>
+              </select>
+
+              <button class="btn-primary-action" id="btnOpenTambahBarang">
+                <i class="bi bi-plus-circle-fill"></i>
+                <span>Tambah Barang</span>
+              </button>
+
+              <button class="btn-secondary" id="btnExportCSV" title="Unduh data dalam format CSV/Excel">
+                <i class="bi bi-file-earmark-spreadsheet-fill"></i> Unduh CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Inventory Table Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="bi bi-table"></i>
+                <span>Register Transaksi Harian Barang Persediaan (Opname Fisik)</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);" id="inventoryCountDisplay">
+                Memuat data...
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="inventory-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;">No</th>
+                    <th>Sub-sub Kelompok</th>
+                    <th>Kd Barang</th>
+                    <th>Nama Barang</th>
+                    <th>Kategori</th>
+                    <th>Satuan</th>
+                    <th>Stok Fisik</th>
+                    <th style="text-align:center;">Aksi Cepat</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-container">
+              <div>Halaman saat ini</div>
+              <div class="pagination-controls" id="inventoryPaginationControls">
+                <!-- Dynamically Rendered -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: TRANSACTIONS & MUTATION HISTORY -->
+        <!-- ============================================== -->
+        <section class="tab-pane" id="tab-transactions">
+          <div class="filter-container">
+            <div class="page-title-box">
+              <h2 style="font-size:17px;font-weight:700;">Buku Mutasi Barang Persediaan</h2>
+              <p>Mencatat setiap pergerakan barang masuk (pengadaan/DIPA) dan barang keluar (distribusi unit kerja).</p>
+            </div>
+
+            <div class="filter-actions">
+              <button class="btn-primary-action" onclick="openModal('modalTrxMasuk')">
+                <i class="bi bi-box-arrow-in-down"></i> Catat Penerimaan
+              </button>
+              <button class="btn-primary-action" style="background:linear-gradient(135deg,#0d9488,#059669);" onclick="openModal('modalTrxKeluar')">
+                <i class="bi bi-box-arrow-up-right"></i> Catat Distribusi
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-responsive">
+              <table class="inventory-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>No. Dokumen / SPK</th>
+                    <th>Nama Barang</th>
+                    <th>Jenis Mutasi</th>
+                    <th>Jumlah</th>
+                    <th>Tujuan / Sumber</th>
+                    <th>Petugas Pengelola</th>
+                  </tr>
+                </thead>
+                <tbody id="transactionsTableBody">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: OFFICERS MANAGEMENT -->
+        <!-- ============================================== -->
+        <section class="tab-pane" id="tab-officers">
+          <div style="margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Struktur Pengelola Keuangan & Persediaan</h2>
+            <p style="font-size:13px;color:var(--text-muted);">
+              Pejabat penanggung jawab pengelolaan keuangan, BMN, dan anggaran Rumah Tahanan Negara Kelas IV B Siak Sri Indrapura.
+            </p>
+          </div>
+
+          <div class="officers-grid" id="officersGridContainer">
+            <!-- Dynamically Rendered -->
+          </div>
+
+          <div class="card" style="margin-top:24px;">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>Uraian Tugas & Tanggung Jawab Pejabat Pengelola</span>
+              </div>
+            </div>
+            <div class="card-body" style="font-size:13.5px;line-height:1.6;color:var(--text-main);">
+              <ul style="padding-left:20px;display:flex;flex-direction:column;gap:10px;">
+                <li>
+                  <strong>Muhammad Kurniawan (Bendahara Pengeluaran):</strong> Bertanggung jawab terhadap pembayaran, verifikasi kuitansi dan dokumen keuangan pengadaan persediaan, serta penatausahaan pembukuan kas DIPA APBN.
+                </li>
+                <li>
+                  <strong>Fajar Gustiawan (Pengelola Aset dan Persediaan):</strong> Bertanggung jawab langsung terhadap penerimaan fisik barang di gudang, registrasi buku persediaan UAKPB, pencatatan mutasi harian, stock opname fisik berkala, dan pelaporan aplikasi SAKTI/SIMAN BMN.
+                </li>
+                <li>
+                  <strong>Rizky Firmansyah (Penyusunan Rencana Anggaran):</strong> Bertanggung jawab terhadap analisis kebutuhan riil persediaan kantor, penyusunan RKA-K/L (Rencana Kerja dan Anggaran), alokasi pagu belanja barang operasional dan pemeliharaan WBP.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- ============================================== -->
+        <!-- TAB 5: OFFICIAL REPORTS & PRINTING -->
+        <!-- ============================================== -->
+        <section class="tab-pane" id="tab-reports">
+          <div class="filter-container" style="flex-wrap:wrap;gap:14px;">
+            <div>
+              <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Pusat Cetak Dokumen Kedinasan (UAKPB)</h2>
+              <p style="font-size:13px;color:var(--text-muted);">
+                Format dokumen cetak resmi Kementerian Imigrasi dan Pemasyarakatan & Ditjenpas Riau lengkap dengan Kop Surat & Logo resmi.
+              </p>
+            </div>
+
+            <div class="filter-actions" style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn-primary-action" onclick="printOfficialReport()" title="Cetak atau Simpan Sebagai PDF (Ctrl+P)">
+                <i class="bi bi-printer-fill"></i>
+                <span>Cetak / Cetak ke PDF</span>
+              </button>
+              <button class="btn-secondary" onclick="exportInventoryToCSV()" title="Ekspor seluruh data persediaan ke spreadsheet CSV">
+                <i class="bi bi-file-earmark-spreadsheet-fill"></i> Ekspor CSV
+              </button>
+              <button class="btn-secondary" id="btnResetDatabase" title="Reset data ke master PDF asli">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Data
+              </button>
+            </div>
+          </div>
+
+          <!-- Document Controls & Filter Bar -->
+          <div class="card" style="margin-bottom:20px;padding:16px 20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+              
+              <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:300px;">
+                <label for="reportFormatSelect" style="font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;">
+                  <i class="bi bi-file-earmark-text-fill" style="color:var(--primary-500);"></i> Jenis Dokumen:
+                </label>
+                <select class="form-control" id="reportFormatSelect" style="font-size:13px;font-weight:600;" onchange="handleReportFormatChange()">
+                  <option value="opname">1. Register Transaksi Harian / Opname Fisik BMN (Lengkap)</option>
+                  <option value="berita_acara">2. Berita Acara Rekonsiliasi & Pemeriksaan Fisik Barang Persediaan</option>
+                  <option value="mutasi">3. Buku Laporan Mutasi Penerimaan & Distribusi Pengeluaran</option>
+                  <option value="kategori">4. Laporan Rekapitulasi Berdasarkan Kategori Persediaan</option>
+                  <option value="surat_dinas">5. Surat Laporan Pelaksanaan Pengelolaan Persediaan (Sesuai Contoh PDF)</option>
+                </select>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;">
+                <label for="reportCategoryFilter" style="font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;">
+                  <i class="bi bi-funnel-fill" style="color:var(--accent-teal);"></i> Filter Kategori:
+                </label>
+                <select class="form-control" id="reportCategoryFilter" style="font-size:12.5px;min-width:180px;" onchange="handleReportFormatChange()">
+                  <option value="ALL">Semua Kategori (1.194 Item)</option>
+                  <option value="Pengamanan & Senjata">Pengamanan & Senjata</option>
+                  <option value="Obat & Medis (Klinik)">Obat & Medis (Klinik)</option>
+                  <option value="Kebersihan & Sanitasi WBP">Kebersihan & Sanitasi WBP</option>
+                  <option value="Alat Tulis Kantor (ATK)">Alat Tulis Kantor (ATK)</option>
+                  <option value="Elektronik & Listrik">Elektronik & Listrik</option>
+                  <option value="Konsumsi & Perlengkapan Dapur">Konsumsi & Perlengkapan Dapur</option>
+                  <option value="Perlengkapan WBP & Seragam">Perlengkapan WBP & Seragam</option>
+                  <option value="Pemeliharaan & Bangunan">Pemeliharaan & Bangunan</option>
+                </select>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;">
+                <label for="reportSignatureModel" style="font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;">
+                  <i class="bi bi-pen-fill" style="color:var(--accent-emerald);"></i> Tanda Tangan:
+                </label>
+                <select class="form-control" id="reportSignatureModel" style="font-size:12.5px;" onchange="handleReportFormatChange()">
+                  <option value="4pejabat">4 Pejabat Lengkap (KPA, PPK, Perencana, BMN)</option>
+                  <option value="karutan_bsre">Format Surat Satker (Kepala Rutan + TTE BSrE BSSN)</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Official Document Live Preview Container -->
+          <div id="officialReportPreviewArea">
+            <!-- Dynamically Rendered with Official Kop Surat & Logo -->
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: TRANSAKSI BARANG MASUK -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="modalTrxMasuk">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-box-arrow-in-down" style="color:#059669;"></i>
+          <span>Pencatatan Penerimaan Barang Persediaan</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalTrxMasuk')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <form onsubmit="handleSimpanTrxMasuk(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Pilih Barang Persediaan *</label>
+            <select class="form-control" id="trxMasukBarangId" required>
+              <!-- Options -->
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Jumlah Masuk *</label>
+              <input type="number" class="form-control" id="trxMasukJumlah" min="1" required placeholder="Contoh: 50">
+            </div>
+            <div class="form-group">
+              <label>Nomor Dokumen / SPK / BAST</label>
+              <input type="text" class="form-control" id="trxMasukNoDok" placeholder="Contoh: SPK/BMN/VI/2026-05">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Sumber Anggaran / Pengadaan</label>
+            <input type="text" class="form-control" id="trxMasukSumber" placeholder="Contoh: DIPA APBN Rutan Siak 2026">
+          </div>
+
+          <div class="form-group">
+            <label>Catatan / Keterangan</label>
+            <textarea class="form-control" id="trxMasukKet" rows="2" placeholder="Keterangan peruntukan pengadaan..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalTrxMasuk')">Batal</button>
+          <button type="submit" class="btn-primary-action">Simpan Penerimaan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: TRANSAKSI BARANG KELUAR / DISTRIBUSI -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="modalTrxKeluar">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-box-arrow-up-right" style="color:#0d9488;"></i>
+          <span>Pengeluaran / Distribusi Barang Persediaan</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalTrxKeluar')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <form onsubmit="handleSimpanTrxKeluar(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Pilih Barang Persediaan *</label>
+            <select class="form-control" id="trxKeluarBarangId" required>
+              <!-- Options -->
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Jumlah Keluar / Diserahkan *</label>
+              <input type="number" class="form-control" id="trxKeluarJumlah" min="1" required placeholder="Contoh: 10">
+            </div>
+            <div class="form-group">
+              <label>Nomor Bukti Pengeluaran (SPB)</label>
+              <input type="text" class="form-control" id="trxKeluarNoDok" placeholder="Contoh: SPB/KPR/VI/2026-08">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Unit / Bagian Penerima Distribusi *</label>
+            <select class="form-control" id="trxKeluarTujuan" required>
+              <option value="Blok Hunian Warga Binaan (WBP)">Blok Hunian Warga Binaan (WBP)</option>
+              <option value="Poliklinik Rutan Siak">Poliklinik Rutan Siak</option>
+              <option value="Kesatuan Pengamanan Rutan (KPR)">Kesatuan Pengamanan Rutan (KPR)</option>
+              <option value="Dapur Pengolahan Makanan WBP">Dapur Pengolahan Makanan WBP</option>
+              <option value="Seksi Pelayanan Tahanan">Seksi Pelayanan Tahanan</option>
+              <option value="Seksi Pengelolaan / Tata Usaha">Seksi Pengelolaan / Tata Usaha</option>
+              <option value="Pos Penjagaan Utama (P2U)">Pos Penjagaan Utama (P2U)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Keperluan Pemakaian / Keterangan</label>
+            <textarea class="form-control" id="trxKeluarKet" rows="2" placeholder="Keperluan pemakaian barang..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalTrxKeluar')">Batal</button>
+          <button type="submit" class="btn-primary-action" style="background:linear-gradient(135deg,#0d9488,#059669);">
+            Simpan Pengeluaran
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: TAMBAH BARANG BARU -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="modalTambahBarang">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-plus-circle-fill" style="color:var(--primary-500);"></i>
+          <span>Registrasi Barang Persediaan Baru</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalTambahBarang')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <form onsubmit="handleSimpanTambahBarang(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nama Barang Persediaan *</label>
+            <input type="text" class="form-control" id="tambahNamaBarang" required placeholder="Contoh: KERTAS A4 SINAR DUNIA 80 GR">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Kode Sub-sub Kelompok</label>
+              <input type="text" class="form-control" id="tambahKdSub" value="1010301001" placeholder="10 Digit angka">
+            </div>
+            <div class="form-group">
+              <label>Kode Barang (6 Digit)</label>
+              <input type="text" class="form-control" id="tambahKdBarang" placeholder="000099">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Kategori Persediaan</label>
+              <select class="form-control" id="tambahKategori">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Satuan Barang *</label>
+              <input type="text" class="form-control" id="tambahSatuan" required placeholder="Contoh: PCS, RIM, BOTOL, BOX">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Stok Awal Fisik</label>
+              <input type="number" class="form-control" id="tambahStokAwal" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Lokasi Penyimpanan</label>
+              <input type="text" class="form-control" id="tambahLokasi" value="Gudang Persediaan Rutan">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Keterangan / Spesifikasi</label>
+            <input type="text" class="form-control" id="tambahKet" placeholder="Spesifikasi atau tujuan penggunaan...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalTambahBarang')">Batal</button>
+          <button type="submit" class="btn-primary-action">Daftarkan Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: DETAIL & EDIT BARANG -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="modalDetailBarang">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-pencil-square" style="color:var(--primary-500);"></i>
+          <span>Detail & Koreksi Data Barang Persediaan</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalDetailBarang')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <form onsubmit="handleSimpanEditBarang(event)">
+        <input type="hidden" id="editId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nama Barang Persediaan *</label>
+            <input type="text" class="form-control" id="editNamaBarang" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Kode Sub-sub Kelompok</label>
+              <input type="text" class="form-control" id="editKdSub">
+            </div>
+            <div class="form-group">
+              <label>Kode Barang</label>
+              <input type="text" class="form-control" id="editKdBarang">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Kategori</label>
+              <select class="form-control" id="editKategori">
+                <option value="Pengamanan & Senjata">Pengamanan & Senjata</option>
+                <option value="Obat & Medis (Klinik)">Obat & Medis (Klinik)</option>
+                <option value="Kebersihan & Sanitasi WBP">Kebersihan & Sanitasi WBP</option>
+                <option value="Alat Tulis Kantor (ATK)">Alat Tulis Kantor (ATK)</option>
+                <option value="Elektronik & Listrik">Elektronik & Listrik</option>
+                <option value="Konsumsi & Perlengkapan Dapur">Konsumsi & Perlengkapan Dapur</option>
+                <option value="Perlengkapan WBP & Seragam">Perlengkapan WBP & Seragam</option>
+                <option value="Pemeliharaan & Bangunan">Pemeliharaan & Bangunan</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Satuan</label>
+              <input type="text" class="form-control" id="editSatuan" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Stok Fisik Saat Ini</label>
+              <input type="number" class="form-control" id="editStokAkhir" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Lokasi Gudang</label>
+              <input type="text" class="form-control" id="editLokasi">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Keterangan</label>
+            <textarea class="form-control" id="editKet" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between;">
+          <button type="button" class="btn-secondary" style="color:#e11d48;border-color:#fecdd3;" onclick="handleDeleteBarang()">
+            <i class="bi bi-trash"></i> Hapus Barang
+          </button>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn-secondary" onclick="closeModal('modalDetailBarang')">Tutup</button>
+            <button type="submit" class="btn-primary-action">Simpan Perubahan</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL BANTUAN AKSES & KONTAK KEDINASAN -->
+  <div class="modal-overlay" id="modalAuthHelp">
+    <div class="modal-container" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-shield-lock-fill" style="color:var(--primary-500);"></i>
+          <span>Bantuan Akses & Kredensial Resmi SIM-Persediaan</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalAuthHelp')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-info-box" style="margin-bottom:16px;">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>
+            <strong>Akses Tertutup Khusus Satker:</strong><br>
+            Portal SIM-Persediaan Rutan Siak ditutup untuk umum. Setiap personil yang ditugaskan memiliki akun resmi berdasarkan SK Pengelola Keuangan & BMN.
+          </div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-main);">Daftar Akun Petugas Terdaftar:</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;">
+          <div style="background:var(--bg-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-color);">
+            <strong>1. Fajar Gustiawan, S.E</strong> (Pengelola Aset & Persediaan)<br>
+            <span style="color:var(--text-muted);">Username: <code>fajar</code> | Sandi Awal: <code>fajar123</code> | Kontak: 0852-4942-3056</span>
+          </div>
+          <div style="background:var(--bg-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-color);">
+            <strong>2. Muhammad Kurniawan, S.E.</strong> (Bendahara Pengeluaran)<br>
+            <span style="color:var(--text-muted);">Username: <code>kurniawan</code> | Sandi Awal: <code>kurniawan123</code> | Kontak: 0822-8373-0737</span>
+          </div>
+          <div style="background:var(--bg-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-color);">
+            <strong>3. Rizky Firmansyah, S.E.</strong> (Penyusunan Rencana Anggaran)<br>
+            <span style="color:var(--text-muted);">Username: <code>rizky</code> | Sandi Awal: <code>rizky123</code> | Kontak: 0821-7341-4511</span>
+          </div>
+          <div style="background:var(--bg-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-color);">
+            <strong>4. Dedy Krihastoni, A.Md.IP, S.H</strong> (Kepala Rutan / KPA)<br>
+            <span style="color:var(--text-muted);">Username: <code>karutan</code> | Sandi Awal: <code>karutan123</code> | Kontak: 0821-4486-8905</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;font-size:12px;color:var(--text-muted);line-height:1.5;">
+          * Catatan: Anda juga dapat menggunakan <strong>NIP resmi</strong> untuk masuk ke akun Anda. Jika lupa kata sandi yang telah diubah, hubungi administrator atau Pengelola BMN Rutan Siak.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary-action" onclick="closeModal('modalAuthHelp')">Mengerti & Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI KELUAR / LOGOUT -->
+  <div class="modal-overlay" id="modalConfirmLogout">
+    <div class="modal-container" style="max-width: 440px;text-align:center;">
+      <div class="modal-body" style="padding: 28px 24px;">
+        <div style="width:60px;height:60px;background:rgba(225,29,72,0.1);color:#e11d48;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">
+          <i class="bi bi-box-arrow-right"></i>
+        </div>
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text-main);">Akhiri Sesi Kerja?</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;">
+          Anda akan keluar dari sistem dan portal akan kembali terkunci untuk publik. Semua data perubahan lokal telah tersimpan.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalConfirmLogout')">Batal</button>
+          <button type="button" class="btn-primary-action" style="background:linear-gradient(135deg,#e11d48,#be123c);" onclick="executeLogout()">
+            <i class="bi bi-box-arrow-right"></i> Ya, Keluar Sekarang
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JAVASCRIPT ASSETS -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
