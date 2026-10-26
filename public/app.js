@@ -608,6 +608,9 @@ function setupEventListeners() {
   document.getElementById("btnOpenTambahBarang")?.addEventListener("click", () => openModal("modalTambahBarang"));
   document.getElementById("btnResetDatabase")?.addEventListener("click", confirmResetData);
   document.getElementById("btnExportCSV")?.addEventListener("click", exportInventoryToCSV);
+
+  // Searchable Item Combobox for Transactions
+  setupSearchableComboboxes();
 }
 
 function updateCatTabsUI() {
@@ -996,11 +999,36 @@ function quickAdjustStock(id, delta) {
 function openModal(modalId) {
   const el = document.getElementById(modalId);
   if (el) el.classList.add("active");
+
+  if (modalId === "modalTrxMasuk") {
+    const hiddenId = document.getElementById("trxMasukBarangId")?.value;
+    if (!hiddenId) {
+      resetSearchableSelection("trxMasuk");
+    }
+    setTimeout(() => {
+      document.getElementById("trxMasukSearchInput")?.focus();
+    }, 120);
+  } else if (modalId === "modalTrxKeluar") {
+    const hiddenId = document.getElementById("trxKeluarBarangId")?.value;
+    if (!hiddenId) {
+      resetSearchableSelection("trxKeluar");
+    }
+    setTimeout(() => {
+      document.getElementById("trxKeluarSearchInput")?.focus();
+    }, 120);
+  }
 }
 
 function closeModal(modalId) {
   const el = document.getElementById(modalId);
   if (el) el.classList.remove("active");
+  if (modalId === "modalTrxMasuk") {
+    const dd = document.getElementById("trxMasukDropdown");
+    if (dd) dd.style.display = "none";
+  } else if (modalId === "modalTrxKeluar") {
+    const dd = document.getElementById("trxKeluarDropdown");
+    if (dd) dd.style.display = "none";
+  }
 }
 
 function populateCategorySelects() {
@@ -1030,14 +1058,242 @@ function populateCategorySelects() {
 }
 
 function populateBarangSelects() {
-  const options = AppState.inventory.map(item => `
-    <option value="${item.id}">[${item.kdBarang}] ${item.namaBarang} (Stok: ${item.stokAkhir} ${item.satuan})</option>
-  `).join("");
-
+  // Safe fallback if select elements exist
   const masukSel = document.getElementById("trxMasukBarangId");
   const keluarSel = document.getElementById("trxKeluarBarangId");
-  if (masukSel) masukSel.innerHTML = options;
-  if (keluarSel) keluarSel.innerHTML = options;
+  if (masukSel && masukSel.tagName === "SELECT") {
+    const options = AppState.inventory.map(item => `
+      <option value="${item.id}">[${item.kdBarang}] ${item.namaBarang} (Stok: ${item.stokAkhir} ${item.satuan})</option>
+    `).join("");
+    masukSel.innerHTML = options;
+  }
+  if (keluarSel && keluarSel.tagName === "SELECT") {
+    const options = AppState.inventory.map(item => `
+      <option value="${item.id}">[${item.kdBarang}] ${item.namaBarang} (Stok: ${item.stokAkhir} ${item.satuan})</option>
+    `).join("");
+    keluarSel.innerHTML = options;
+  }
+}
+
+// ====================================================
+// SEARCHABLE COMBOBOX CONTROLLER FOR TRANSACTIONS
+// ====================================================
+function setupSearchableComboboxes() {
+  ['trxMasuk', 'trxKeluar'].forEach(prefix => {
+    const searchInput = document.getElementById(`${prefix}SearchInput`);
+    const dropdown = document.getElementById(`${prefix}Dropdown`);
+    const list = document.getElementById(`${prefix}List`);
+    if (!searchInput || !dropdown || !list) return;
+
+    // Saat pengguna mengetik kata kunci pencarian
+    searchInput.addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      renderSearchableResults(prefix, q);
+      dropdown.style.display = "flex";
+
+      // Jika input dikosongkan secara manual, batalkan pemilihan barang
+      if (!q) {
+        const hiddenId = document.getElementById(`${prefix}BarangId`);
+        const card = document.getElementById(`${prefix}SelectedCard`);
+        const clearBtn = document.getElementById(`${prefix}ClearBtn`);
+        if (hiddenId) hiddenId.value = "";
+        if (card) card.style.display = "none";
+        if (clearBtn) clearBtn.style.display = "none";
+      }
+    });
+
+    // Saat input diklik/fokus: buka dropdown
+    searchInput.addEventListener("focus", () => {
+      const q = searchInput.value.trim().toLowerCase();
+      renderSearchableResults(prefix, q);
+      dropdown.style.display = "flex";
+    });
+
+    // Navigasi keyboard: ArrowDown, Escape, Enter
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        dropdown.style.display = "none";
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const items = list.querySelectorAll(".searchable-dropdown-item");
+        if (items.length > 0) items[0].focus();
+      } else if (e.key === "Enter") {
+        const first = list.querySelector(".searchable-dropdown-item");
+        if (first && dropdown.style.display !== "none") {
+          e.preventDefault();
+          first.click();
+        }
+      }
+    });
+  });
+
+  // Tutup dropdown jika klik di luar area combobox
+  document.addEventListener("click", (e) => {
+    ['trxMasuk', 'trxKeluar'].forEach(prefix => {
+      const group = document.getElementById(`${prefix}SelectGroup`);
+      const dropdown = document.getElementById(`${prefix}Dropdown`);
+      if (group && dropdown && !group.contains(e.target)) {
+        dropdown.style.display = "none";
+      }
+    });
+  });
+}
+
+function renderSearchableResults(prefix, query) {
+  const list = document.getElementById(`${prefix}List`);
+  const countInfo = document.getElementById(`${prefix}CountInfo`);
+  if (!list) return;
+
+  let matches = [];
+  const items = AppState.inventory || [];
+
+  if (!query) {
+    // Tampilkan 30 barang awal
+    matches = items.slice(0, 30);
+    if (countInfo) countInfo.textContent = `Pilih dari ${items.length} barang persediaan (Ketik nama/kode):`;
+  } else {
+    // Cari berdasarkan nama barang, kode barang, kategori, atau satuan
+    matches = items.filter(item => {
+      const name = (item.namaBarang || "").toLowerCase();
+      const code = (item.kdBarang || "").toLowerCase();
+      const cat = (item.kategori || "").toLowerCase();
+      const unit = (item.satuan || "").toLowerCase();
+      return name.includes(query) || code.includes(query) || cat.includes(query) || unit.includes(query);
+    }).slice(0, 40); // Batasi 40 hasil untuk performa instan
+
+    if (countInfo) {
+      countInfo.innerHTML = matches.length > 0 
+        ? `Ditemukan <strong>${matches.length}</strong> barang persediaan yang cocok:` 
+        : `Hasil Pencarian`;
+    }
+  }
+
+  if (matches.length === 0) {
+    list.innerHTML = `
+      <div class="searchable-dropdown-empty">
+        <i class="bi bi-search" style="font-size:20px;opacity:0.4;display:block;margin-bottom:6px;"></i>
+        <span>Tidak ada barang dengan kata kunci "<strong>${escapeHtmlSafe(query)}</strong>"</span>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = matches.map(item => {
+    const stockClass = item.stokAkhir > 0 ? "in-stock" : "empty-stock";
+    const stockText = item.stokAkhir > 0 ? `Stok: ${item.stokAkhir} ${item.satuan}` : `Stok Habis (0 ${item.satuan})`;
+    
+    // Highlight kata kunci yang dicari
+    let titleHtml = escapeHtmlSafe(item.namaBarang);
+    if (query) {
+      try {
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+        titleHtml = titleHtml.replace(regex, "<mark>$1</mark>");
+      } catch (err) {
+        // Fallback jika ada special characters
+      }
+    }
+
+    return `
+      <div class="searchable-dropdown-item" tabindex="0" onclick="selectSearchableItem('${prefix}', ${item.id})" onkeydown="if(event.key==='Enter') selectSearchableItem('${prefix}', ${item.id})">
+        <div class="searchable-item-main">
+          <div class="searchable-item-title">${titleHtml}</div>
+          <div class="searchable-item-sub">
+            <span class="searchable-badge-code">[${item.kdBarang}]</span>
+            <span>${escapeHtmlSafe(item.kategori || 'Persediaan Umum')}</span>
+          </div>
+        </div>
+        <div class="searchable-item-badges">
+          <span class="searchable-badge-stock ${stockClass}">${stockText}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectSearchableItem(prefix, itemId) {
+  const item = AppState.inventory.find(i => i.id === itemId);
+  if (!item) return;
+
+  const hiddenInput = document.getElementById(`${prefix}BarangId`);
+  const searchInput = document.getElementById(`${prefix}SearchInput`);
+  const clearBtn = document.getElementById(`${prefix}ClearBtn`);
+  const dropdown = document.getElementById(`${prefix}Dropdown`);
+  const card = document.getElementById(`${prefix}SelectedCard`);
+  const codeEl = document.getElementById(`${prefix}SelectedCode`);
+  const nameEl = document.getElementById(`${prefix}SelectedName`);
+  const metaEl = document.getElementById(`${prefix}SelectedMeta`);
+
+  if (hiddenInput) hiddenInput.value = item.id;
+  if (searchInput) searchInput.value = `[${item.kdBarang}] ${item.namaBarang}`;
+  if (clearBtn) clearBtn.style.display = "flex";
+  if (dropdown) dropdown.style.display = "none";
+
+  if (card && codeEl && nameEl && metaEl) {
+    card.style.display = "flex";
+    codeEl.textContent = item.kdBarang;
+    nameEl.textContent = item.namaBarang;
+    metaEl.innerHTML = `
+      <span>Kategori: <strong>${item.kategori}</strong></span> &bull; 
+      <span>Stok Fisik: <strong>${item.stokAkhir} ${item.satuan}</strong></span> &bull; 
+      <span>Lokasi: <strong>${item.lokasi || 'Gudang Persediaan'}</strong></span>
+    `;
+  }
+
+  // Khusus barang keluar: atur batas maksimal sesuai stok fisik saat ini
+  if (prefix === "trxKeluar") {
+    const jumlahInput = document.getElementById("trxKeluarJumlah");
+    if (jumlahInput) {
+      jumlahInput.max = item.stokAkhir;
+      jumlahInput.placeholder = `Maksimal keluar: ${item.stokAkhir} ${item.satuan}`;
+      jumlahInput.focus();
+    }
+  } else if (prefix === "trxMasuk") {
+    const jumlahInput = document.getElementById("trxMasukJumlah");
+    if (jumlahInput) {
+      jumlahInput.placeholder = `Contoh: 50 ${item.satuan}`;
+      jumlahInput.focus();
+    }
+  }
+}
+
+function resetSearchableSelection(prefix) {
+  const hiddenInput = document.getElementById(`${prefix}BarangId`);
+  const searchInput = document.getElementById(`${prefix}SearchInput`);
+  const clearBtn = document.getElementById(`${prefix}ClearBtn`);
+  const dropdown = document.getElementById(`${prefix}Dropdown`);
+  const card = document.getElementById(`${prefix}SelectedCard`);
+
+  if (hiddenInput) hiddenInput.value = "";
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.focus();
+  }
+  if (clearBtn) clearBtn.style.display = "none";
+  if (dropdown) dropdown.style.display = "none";
+  if (card) card.style.display = "none";
+
+  if (prefix === "trxKeluar") {
+    const jumlahInput = document.getElementById("trxKeluarJumlah");
+    if (jumlahInput) {
+      jumlahInput.removeAttribute("max");
+      jumlahInput.placeholder = "Contoh: 10";
+    }
+  } else if (prefix === "trxMasuk") {
+    const jumlahInput = document.getElementById("trxMasukJumlah");
+    if (jumlahInput) {
+      jumlahInput.placeholder = "Contoh: 50";
+    }
+  }
+}
+
+function escapeHtmlSafe(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 // Submit Barang Masuk
@@ -1049,8 +1305,14 @@ function handleSimpanTrxMasuk(e) {
   const sumber = document.getElementById("trxMasukSumber").value.trim() || "DIPA Rutan Siak 2026";
   const ket = document.getElementById("trxMasukKet").value.trim() || "Penerimaan Barang Persediaan";
 
-  if (!barangId || !jumlah || jumlah <= 0) {
-    showToast("Harap isi pilihan barang dan jumlah yang valid!", "danger");
+  if (!barangId) {
+    showToast("Silakan cari dan pilih barang persediaan terlebih dahulu!", "danger");
+    document.getElementById("trxMasukSearchInput")?.focus();
+    return;
+  }
+  if (!jumlah || jumlah <= 0) {
+    showToast("Harap isi jumlah penerimaan yang valid (minimal 1)!", "danger");
+    document.getElementById("trxMasukJumlah")?.focus();
     return;
   }
 
@@ -1079,6 +1341,10 @@ function handleSimpanTrxMasuk(e) {
 
   saveInventory();
   saveTransactions();
+  resetSearchableSelection("trxMasuk");
+  document.getElementById("trxMasukJumlah").value = "";
+  document.getElementById("trxMasukNoDok").value = "";
+  document.getElementById("trxMasukKet").value = "";
   closeModal("modalTrxMasuk");
   renderApp();
   showToast(`Berhasil mencatat barang masuk: ${jumlah} ${item.satuan} ${item.namaBarang}`, "success");
@@ -1093,8 +1359,14 @@ function handleSimpanTrxKeluar(e) {
   const tujuan = document.getElementById("trxKeluarTujuan").value.trim() || "Seksi Pengelolaan / Blok WBP";
   const ket = document.getElementById("trxKeluarKet").value.trim() || "Distribusi Pemakaian Rutin";
 
-  if (!barangId || !jumlah || jumlah <= 0) {
-    showToast("Harap isi pilihan barang dan jumlah yang valid!", "danger");
+  if (!barangId) {
+    showToast("Silakan cari dan pilih barang persediaan yang akan dikeluarkan!", "danger");
+    document.getElementById("trxKeluarSearchInput")?.focus();
+    return;
+  }
+  if (!jumlah || jumlah <= 0) {
+    showToast("Harap isi jumlah pengeluaran yang valid (minimal 1)!", "danger");
+    document.getElementById("trxKeluarJumlah")?.focus();
     return;
   }
 
@@ -1128,6 +1400,10 @@ function handleSimpanTrxKeluar(e) {
 
   saveInventory();
   saveTransactions();
+  resetSearchableSelection("trxKeluar");
+  document.getElementById("trxKeluarJumlah").value = "";
+  document.getElementById("trxKeluarNoDok").value = "";
+  document.getElementById("trxKeluarKet").value = "";
   closeModal("modalTrxKeluar");
   renderApp();
   showToast(`Berhasil mendistribusikan: ${jumlah} ${item.satuan} ${item.namaBarang} ke ${tujuan}`, "success");
@@ -1135,8 +1411,7 @@ function handleSimpanTrxKeluar(e) {
 
 function openQuickKeluarModal(barangId) {
   openModal("modalTrxKeluar");
-  const sel = document.getElementById("trxKeluarBarangId");
-  if (sel) sel.value = barangId;
+  selectSearchableItem("trxKeluar", barangId);
 }
 
 // Submit Tambah Barang Baru
