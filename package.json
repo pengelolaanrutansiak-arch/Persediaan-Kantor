@@ -1,0 +1,18 @@
+{
+  "name": "sim-persediaan-rutan-siak",
+  "version": "1.0.0",
+  "description": "Sistem Informasi Manajemen Persediaan Kantor Rutan Kelas IV B Siak Sri Indrapura",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve .",
+    "build": "echo 'Static web application ready for deployment'"
+  },
+  "keywords": [
+    "bmn",
+    "persediaan",
+    "rutan-siak",
+    "kemenimipas"
+  ],
+  "author": "Rutan Kelas IV B Siak Sri Indrapura",
+  "license": "MIT"
+}
