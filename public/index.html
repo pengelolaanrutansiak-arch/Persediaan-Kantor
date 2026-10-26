@@ -719,11 +719,34 @@
       </div>
       <form onsubmit="handleSimpanTrxMasuk(event)">
         <div class="modal-body">
-          <div class="form-group">
-            <label>Pilih Barang Persediaan *</label>
-            <select class="form-control" id="trxMasukBarangId" required>
-              <!-- Options -->
-            </select>
+          <div class="form-group searchable-select-group" id="trxMasukSelectGroup">
+            <label for="trxMasukSearchInput"><i class="bi bi-search"></i> Cari & Pilih Barang Persediaan *</label>
+            <div class="searchable-combobox">
+              <div class="searchable-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="form-control searchable-search-input" id="trxMasukSearchInput" placeholder="Ketik nama atau kode barang (contoh: Kertas, Spidol, 000001)..." autocomplete="off">
+                <button type="button" class="btn-clear-selection" id="trxMasukClearBtn" title="Hapus pilihan" style="display: none;" onclick="resetSearchableSelection('trxMasuk')">
+                  <i class="bi bi-x-circle-fill"></i>
+                </button>
+              </div>
+              <input type="hidden" id="trxMasukBarangId" required>
+              <div class="searchable-dropdown" id="trxMasukDropdown" style="display: none;">
+                <div class="searchable-dropdown-header">
+                  <span id="trxMasukCountInfo">Memuat daftar barang...</span>
+                </div>
+                <div class="searchable-dropdown-list" id="trxMasukList"></div>
+              </div>
+            </div>
+            <div class="selected-item-card" id="trxMasukSelectedCard" style="display: none;">
+              <div class="selected-item-info">
+                <div class="selected-item-badge" id="trxMasukSelectedCode">000001</div>
+                <div class="selected-item-details">
+                  <strong id="trxMasukSelectedName">Nama Barang</strong>
+                  <span class="selected-item-meta" id="trxMasukSelectedMeta">Kategori &bull; Stok: 0 PCS</span>
+                </div>
+              </div>
+              <span class="selected-item-check"><i class="bi bi-check2-circle"></i> Terpilih</span>
+            </div>
           </div>
 
           <div class="form-row">
@@ -769,11 +792,34 @@
       </div>
       <form onsubmit="handleSimpanTrxKeluar(event)">
         <div class="modal-body">
-          <div class="form-group">
-            <label>Pilih Barang Persediaan *</label>
-            <select class="form-control" id="trxKeluarBarangId" required>
-              <!-- Options -->
-            </select>
+          <div class="form-group searchable-select-group" id="trxKeluarSelectGroup">
+            <label for="trxKeluarSearchInput"><i class="bi bi-search"></i> Cari & Pilih Barang Persediaan *</label>
+            <div class="searchable-combobox">
+              <div class="searchable-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="form-control searchable-search-input" id="trxKeluarSearchInput" placeholder="Ketik nama atau kode barang (contoh: Sabun, Seng, 000001)..." autocomplete="off">
+                <button type="button" class="btn-clear-selection" id="trxKeluarClearBtn" title="Hapus pilihan" style="display: none;" onclick="resetSearchableSelection('trxKeluar')">
+                  <i class="bi bi-x-circle-fill"></i>
+                </button>
+              </div>
+              <input type="hidden" id="trxKeluarBarangId" required>
+              <div class="searchable-dropdown" id="trxKeluarDropdown" style="display: none;">
+                <div class="searchable-dropdown-header">
+                  <span id="trxKeluarCountInfo">Memuat daftar barang...</span>
+                </div>
+                <div class="searchable-dropdown-list" id="trxKeluarList"></div>
+              </div>
+            </div>
+            <div class="selected-item-card" id="trxKeluarSelectedCard" style="display: none;">
+              <div class="selected-item-info">
+                <div class="selected-item-badge" id="trxKeluarSelectedCode">000001</div>
+                <div class="selected-item-details">
+                  <strong id="trxKeluarSelectedName">Nama Barang</strong>
+                  <span class="selected-item-meta" id="trxKeluarSelectedMeta">Kategori &bull; Stok: 0 PCS</span>
+                </div>
+              </div>
+              <span class="selected-item-check"><i class="bi bi-check2-circle"></i> Terpilih</span>
+            </div>
           </div>
 
           <div class="form-row">
