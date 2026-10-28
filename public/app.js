@@ -501,7 +501,9 @@ function setupNavigation() {
   navItems.forEach(item => {
     item.addEventListener("click", () => {
       const tab = item.getAttribute("data-tab");
-      switchTab(tab);
+      if (tab) {
+        switchTab(tab);
+      }
     });
   });
 
@@ -2189,81 +2191,194 @@ function showToast(message, type = "success") {
 let cabinetQrCodeInstance = null;
 
 function getCabinetQrTargetUrl() {
-  const loc = window.location;
-  let base = loc.origin + loc.pathname;
-  if (base.endsWith("/index.html")) {
-    base = base.replace(/\/index\.html$/, "/ambil-barang.html");
-  } else if (base.endsWith("/")) {
-    base += "ambil-barang.html";
-  } else {
-    const parts = base.split("/");
-    parts.pop();
-    base = parts.join("/") + "/ambil-barang.html";
+  try {
+    const loc = window.location;
+
+    // Akses lokal via file:// — kembalikan path file langsung
+    if (loc.protocol === "file:") {
+      let path = loc.pathname;
+      if (path.endsWith("index.html")) {
+        path = path.replace(/index\.html$/, "ambil-barang.html");
+      } else if (path.endsWith("/")) {
+        path += "ambil-barang.html";
+      } else {
+        path = path.substring(0, path.lastIndexOf("/") + 1) + "ambil-barang.html";
+      }
+      return "file://" + path;
+    }
+
+    // HTTP/HTTPS: Hitung base dir dari pathname saat ini
+    const origin = loc.origin;
+    let pathname = loc.pathname || "/";
+
+    // Hapus nama file (index.html, index, dsb) sehingga hanya tersisa direktori
+    const lastSlash = pathname.lastIndexOf("/");
+    const lastSegment = pathname.substring(lastSlash + 1);
+    // Jika segmen terakhir mengandung titik (file) atau adalah "index", hapus
+    if (lastSegment === "" || lastSegment.includes(".") || lastSegment === "index") {
+      pathname = pathname.substring(0, lastSlash + 1);
+    } else {
+      pathname = pathname + "/";
+    }
+
+    // Vercel dengan cleanUrls=true: path tanpa .html
+    return `${origin}${pathname}ambil-barang`;
+  } catch (e) {
+    // Fallback paling aman
+    return window.location.href.split("?")[0].split("#")[0]
+      .replace(/\/(index(\.html)?)?$/, "/") + "ambil-barang";
   }
-  return base;
+}
+
+function renderCabinetQrCode(targetUrl) {
+  const container = document.getElementById("cabinetQrCodeCanvas");
+  if (!container) return;
+
+  const safeUrl = (targetUrl || getCabinetQrTargetUrl()).trim();
+
+  // Tampilkan loading spinner dahulu
+  container.innerHTML = `
+    <div style="width:220px;height:220px;display:flex;align-items:center;justify-content:center;background:#f8fafc;border-radius:8px;margin:0 auto;">
+      <div style="text-align:center;color:#94a3b8;font-size:12px;">
+        <div style="font-size:28px;margin-bottom:8px;">⏳</div>
+        Memuat QR Code...
+      </div>
+    </div>
+  `;
+
+  // Metode 1: Gunakan API online (paling andal di Vercel & semua browser)
+  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(safeUrl)}`;
+  const img = new Image();
+  img.onload = function () {
+    container.innerHTML = "";
+    img.style.cssText = "width:220px;height:220px;display:block;margin:0 auto;border-radius:8px;";
+    img.alt = "Barcode Lemari Persediaan";
+    container.appendChild(img);
+  };
+  img.onerror = function () {
+    // Metode 2: Fallback ke library QRCode.js lokal (offline)
+    container.innerHTML = "";
+    try {
+      if (typeof QRCode !== "undefined") {
+        cabinetQrCodeInstance = new QRCode(container, {
+          text: safeUrl,
+          width: 220,
+          height: 220,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: (QRCode.CorrectLevel && QRCode.CorrectLevel.M) ? QRCode.CorrectLevel.M : 0
+        });
+      } else {
+        throw new Error("Library QRCode tidak tersedia");
+      }
+    } catch (err) {
+      // Metode 3: Tampilkan URL sebagai teks sebagai upaya terakhir
+      container.innerHTML = `
+        <div style="width:220px;padding:12px;background:#fee2e2;border:2px dashed #ef4444;border-radius:8px;text-align:center;margin:0 auto;font-size:11px;color:#dc2626;">
+          <div style="font-size:24px;margin-bottom:6px;">⚠️</div>
+          <strong>Gagal memuat barcode.</strong><br>
+          Pastikan koneksi internet aktif atau hubungi admin.
+        </div>
+      `;
+    }
+  };
+  img.src = apiUrl;
 }
 
 function openCabinetQrModal() {
-  const targetUrl = getCabinetQrTargetUrl();
-  const input = document.getElementById("targetQrUrlInput");
-  if (input) input.value = targetUrl;
-
-  const qrCanvasContainer = document.getElementById("cabinetQrCodeCanvas");
-  if (qrCanvasContainer) {
-    qrCanvasContainer.innerHTML = "";
-    if (typeof QRCode !== "undefined") {
-      cabinetQrCodeInstance = new QRCode(qrCanvasContainer, {
-        text: targetUrl,
-        width: 220,
-        height: 220,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
-    }
-  }
-
+  // Buka modal LEBIH DULU agar konten tampil, lalu render QR di dalam
   openModal("modalQrLemari");
+
+  // Isi URL dan render QR dengan sedikit delay agar DOM sudah visible
+  setTimeout(function () {
+    try {
+      const targetUrl = getCabinetQrTargetUrl();
+      const input = document.getElementById("targetQrUrlInput");
+      if (input) input.value = targetUrl;
+      renderCabinetQrCode(targetUrl);
+    } catch (err) {
+      console.error("Gagal menyiapkan Barcode Lemari:", err);
+    }
+  }, 80);
+}
+
+function handleUpdateTargetQrUrl() {
+  const input = document.getElementById("targetQrUrlInput");
+  if (!input || !input.value.trim()) return;
+  renderCabinetQrCode(input.value.trim());
+  showToast("Tampilan barcode berhasil diperbarui!", "success");
 }
 
 function printCabinetSticker() {
   document.body.classList.add("printing-cabinet-sticker");
   window.print();
-  setTimeout(() => {
+  setTimeout(function () {
     document.body.classList.remove("printing-cabinet-sticker");
   }, 1000);
 }
 
 function downloadCabinetQr() {
   const canvas = document.querySelector("#cabinetQrCodeCanvas canvas");
-  if (!canvas) {
-    showToast("QR code belum siap diunduh!", "danger");
+  const img = document.querySelector("#cabinetQrCodeCanvas img");
+
+  if (img && img.src && !img.src.startsWith("data:")) {
+    // Gambar dari URL API — buka di tab baru agar bisa disave
+    window.open(img.src, "_blank");
+    showToast("Barcode terbuka di tab baru. Klik kanan → Simpan Gambar.", "success");
     return;
   }
+
+  let dataUrl = "";
+  if (canvas) {
+    try { dataUrl = canvas.toDataURL("image/png"); } catch (e) {}
+  }
+  if (!dataUrl && img && img.src) {
+    dataUrl = img.src;
+  }
+  if (!dataUrl) {
+    showToast("Barcode belum siap. Pastikan koneksi aktif, lalu coba lagi.", "danger");
+    return;
+  }
+
   const link = document.createElement("a");
   link.download = "barcode-lemari-persediaan-rutan-siak.png";
-  link.href = canvas.toDataURL("image/png");
+  link.href = dataUrl;
   link.click();
   showToast("Barcode stiker lemari berhasil diunduh!", "success");
 }
 
 function copyCabinetQrLink() {
   const input = document.getElementById("targetQrUrlInput");
-  if (!input) return;
-  navigator.clipboard.writeText(input.value).then(() => {
-    showToast("Tautan form ambil barang lemari berhasil disalin!", "success");
-  }).catch(() => {
-    input.select();
+  const val = (input && input.value) ? input.value : getCabinetQrTargetUrl();
+
+  const doCopy = function () {
+    const tmp = document.createElement("textarea");
+    tmp.value = val;
+    tmp.style.position = "fixed";
+    tmp.style.opacity = "0";
+    document.body.appendChild(tmp);
+    tmp.focus();
+    tmp.select();
     document.execCommand("copy");
+    document.body.removeChild(tmp);
     showToast("Tautan form ambil barang lemari berhasil disalin!", "success");
-  });
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(val)
+      .then(function () { showToast("Tautan form ambil barang lemari berhasil disalin!", "success"); })
+      .catch(doCopy);
+  } else {
+    doCopy();
+  }
 }
 
 function previewSignature(sigUrl, officerName) {
   const img = document.getElementById("sigPreviewImage");
   const meta = document.getElementById("sigPreviewMeta");
   if (img) img.src = sigUrl;
-  if (meta) meta.innerText = `Paraf digital oleh: ${officerName || 'Pegawai'}`;
+  if (meta) meta.innerText = "Paraf digital oleh: " + (officerName || "Pegawai");
   openModal("modalPreviewSig");
 }
+
 
