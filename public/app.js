@@ -476,6 +476,25 @@ function saveOfficers() {
   localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
 }
 
+// Sinkronisasi Real-time Antar Tab (misal saat pegawai mengisi formulir via QR di ambil-barang.html)
+window.addEventListener("storage", (e) => {
+  if (e.key === "sim_rutan_inventory" || e.key === "sim_rutan_transactions") {
+    try {
+      if (e.key === "sim_rutan_inventory" && e.newValue) {
+        AppState.inventory = JSON.parse(e.newValue);
+      }
+      if (e.key === "sim_rutan_transactions" && e.newValue) {
+        AppState.transactions = JSON.parse(e.newValue);
+      }
+      if (AppState.isAuthenticated) {
+        renderApp();
+      }
+    } catch (err) {
+      console.warn("Sinkronisasi data lemari persediaan error:", err);
+    }
+  }
+});
+
 // Navigation and Tab Switching
 function setupNavigation() {
   const navItems = document.querySelectorAll(".nav-item");
@@ -879,24 +898,45 @@ function renderTransactionsTable() {
     return;
   }
 
-  tbody.innerHTML = trxs.map((trx, idx) => `
-    <tr>
-      <td style="font-size:12px;color:var(--text-muted);">${idx + 1}</td>
-      <td style="font-size:12px;white-space:nowrap;">${trx.tanggal}</td>
-      <td class="code-cell">${trx.noDok}</td>
-      <td class="item-name-cell">${trx.namaBarang}</td>
-      <td>
-        <span class="category-tag ${trx.jenis === 'MASUK' ? 'cat-medis' : 'cat-pengamanan'}">
-          ${trx.jenis}
-        </span>
-      </td>
-      <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${trx.jenis === 'MASUK' ? '#059669' : '#e11d48'};">
-        ${trx.jenis === 'MASUK' ? '+' : '-'}${trx.jumlah} ${trx.satuan}
-      </td>
-      <td style="font-size:12px;">${trx.tujuan || trx.sumber}</td>
-      <td style="font-size:12px;color:var(--text-muted);">${trx.petugas.split(',')[0]}</td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = trxs.map((trx, idx) => {
+    const isQrMandiri = trx.subJenis === "MANDIRI_QR" || (trx.noDok && trx.noDok.startsWith("QR-OUT"));
+    
+    let jenisBadge = "";
+    if (isQrMandiri) {
+      jenisBadge = `<span class="badge-qr-lemari" title="Pengambilan mandiri dari lemari persediaan via scan barcode"><i class="bi bi-qr-code"></i> Lemari (Scan)</span>`;
+    } else if (trx.jenis === "MASUK") {
+      jenisBadge = `<span class="category-tag cat-medis">MASUK</span>`;
+    } else {
+      jenisBadge = `<span class="category-tag cat-pengamanan">KELUAR</span>`;
+    }
+
+    let parafBtn = "";
+    if (trx.signature) {
+      parafBtn = `
+        <button type="button" class="btn-text-link" style="margin-left:6px;color:#0d9488;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;" onclick="previewSignature('${trx.signature}', '${escapeHtml(trx.petugas || trx.penerima)}')">
+          <i class="bi bi-pen"></i> Paraf
+        </button>
+      `;
+    }
+
+    return `
+      <tr>
+        <td style="font-size:12px;color:var(--text-muted);">${idx + 1}</td>
+        <td style="font-size:12px;white-space:nowrap;">${trx.tanggal}</td>
+        <td class="code-cell" style="font-size:11.5px;">${trx.noDok}</td>
+        <td class="item-name-cell">${trx.namaBarang}</td>
+        <td>${jenisBadge}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${trx.jenis === 'MASUK' ? '#059669' : '#e11d48'};">
+          ${trx.jenis === 'MASUK' ? '+' : '-'}${trx.jumlah} ${trx.satuan}
+        </td>
+        <td style="font-size:12px;">${trx.tujuan || trx.sumber}</td>
+        <td style="font-size:12px;color:var(--text-muted);">
+          <span>${trx.petugas ? trx.petugas.split(',')[0] : '-'}</span>
+          ${parafBtn}
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 // ----------------------------------------------------
@@ -2141,3 +2181,89 @@ function showToast(message, type = "success") {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+// ====================================================================
+// CONTROLLER BARCODE LEMARI PERSEDIAAN & PENGAMBILAN MANDIRI
+// ====================================================================
+
+let cabinetQrCodeInstance = null;
+
+function getCabinetQrTargetUrl() {
+  const loc = window.location;
+  let base = loc.origin + loc.pathname;
+  if (base.endsWith("/index.html")) {
+    base = base.replace(/\/index\.html$/, "/ambil-barang.html");
+  } else if (base.endsWith("/")) {
+    base += "ambil-barang.html";
+  } else {
+    const parts = base.split("/");
+    parts.pop();
+    base = parts.join("/") + "/ambil-barang.html";
+  }
+  return base;
+}
+
+function openCabinetQrModal() {
+  const targetUrl = getCabinetQrTargetUrl();
+  const input = document.getElementById("targetQrUrlInput");
+  if (input) input.value = targetUrl;
+
+  const qrCanvasContainer = document.getElementById("cabinetQrCodeCanvas");
+  if (qrCanvasContainer) {
+    qrCanvasContainer.innerHTML = "";
+    if (typeof QRCode !== "undefined") {
+      cabinetQrCodeInstance = new QRCode(qrCanvasContainer, {
+        text: targetUrl,
+        width: 220,
+        height: 220,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+  }
+
+  openModal("modalQrLemari");
+}
+
+function printCabinetSticker() {
+  document.body.classList.add("printing-cabinet-sticker");
+  window.print();
+  setTimeout(() => {
+    document.body.classList.remove("printing-cabinet-sticker");
+  }, 1000);
+}
+
+function downloadCabinetQr() {
+  const canvas = document.querySelector("#cabinetQrCodeCanvas canvas");
+  if (!canvas) {
+    showToast("QR code belum siap diunduh!", "danger");
+    return;
+  }
+  const link = document.createElement("a");
+  link.download = "barcode-lemari-persediaan-rutan-siak.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+  showToast("Barcode stiker lemari berhasil diunduh!", "success");
+}
+
+function copyCabinetQrLink() {
+  const input = document.getElementById("targetQrUrlInput");
+  if (!input) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast("Tautan form ambil barang lemari berhasil disalin!", "success");
+  }).catch(() => {
+    input.select();
+    document.execCommand("copy");
+    showToast("Tautan form ambil barang lemari berhasil disalin!", "success");
+  });
+}
+
+function previewSignature(sigUrl, officerName) {
+  const img = document.getElementById("sigPreviewImage");
+  const meta = document.getElementById("sigPreviewMeta");
+  if (img) img.src = sigUrl;
+  if (meta) meta.innerText = `Paraf digital oleh: ${officerName || 'Pegawai'}`;
+  openModal("modalPreviewSig");
+}
+
