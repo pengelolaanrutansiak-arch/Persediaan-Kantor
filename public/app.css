@@ -2810,4 +2810,248 @@ body {
   }
 }
 
+/* ====================================================================
+   CABINET BARCODE / QR CODE SELF-SERVICE STYLES
+   ==================================================================== */
+.badge-qr-lemari {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.qr-banner-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(13, 148, 136, 0.1));
+  border: 1.5px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.qr-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.qr-banner-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+.qr-banner-text h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 3px;
+}
+.qr-banner-text p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+.qr-banner-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Modal Cabinet QR Layout */
+.qr-modal-body {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 22px;
+  padding: 20px 24px;
+}
+@media (max-width: 820px) {
+  .qr-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cabinet Sticker Printable Container */
+.cabinet-sticker-wrapper {
+  background: #ffffff;
+  color: #0f172a;
+  border: 2px dashed #94a3b8;
+  border-radius: 16px;
+  padding: 20px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  position: relative;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.cabinet-sticker-header {
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.cabinet-sticker-logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+.cabinet-sticker-titles {
+  text-align: left;
+}
+.cabinet-sticker-kemen {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #1e3a8a;
+  text-transform: uppercase;
+}
+.cabinet-sticker-rutan {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.cabinet-sticker-uakpb {
+  font-size: 9px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cabinet-sticker-main-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0d9488;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.cabinet-sticker-sub-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.cabinet-sticker-qr-box {
+  display: inline-block;
+  padding: 12px;
+  background: #ffffff;
+  border: 2.5px solid #0d9488;
+  border-radius: 14px;
+  margin: 0 auto 12px;
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.15);
+}
+.cabinet-sticker-qr-box canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+.cabinet-sticker-steps {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.cabinet-sticker-steps-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sticker-step-item {
+  font-size: 10.5px;
+  color: #334155;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.sticker-step-num {
+  width: 16px;
+  height: 16px;
+  background: #0d9488;
+  color: white;
+  border-radius: 50%;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cabinet-sticker-warning {
+  font-size: 9.5px;
+  color: #dc2626;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 6px 8px;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+}
+
+/* Print Rules specifically for Cabinet Sticker */
+@media print {
+  body.printing-cabinet-sticker {
+    background: #ffffff !important;
+  }
+  body.printing-cabinet-sticker * {
+    visibility: hidden;
+  }
+  body.printing-cabinet-sticker #cabinetStickerPrintArea,
+  body.printing-cabinet-sticker #cabinetStickerPrintArea * {
+    visibility: visible;
+  }
+  body.printing-cabinet-sticker #cabinetStickerPrintArea {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 140mm;
+    margin: 0 auto;
+    padding: 0;
+    box-shadow: none !important;
+    border: 2px dashed #000000 !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body.printing-cabinet-sticker .cabinet-sticker-wrapper {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
+
+
 
