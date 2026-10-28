@@ -218,6 +218,22 @@
             </button>
 
           </div>
+
+          <!-- Quick Access Link Khusus Pegawai yang Mengambil Barang Lemari (Tanpa Login Admin) -->
+          <div style="margin-top: 18px; padding: 14px 16px; background: rgba(13, 148, 136, 0.12); border: 1.5px solid rgba(13, 148, 136, 0.35); border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #0d9488, #059669); color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35); flex-shrink: 0;">
+                <i class="bi bi-qr-code-scan"></i>
+              </div>
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Mengambil Barang dari Lemari Persediaan?</div>
+                <div style="font-size: 11px; color: #94a3b8; line-height: 1.35;">Siapapun pegawai tidak perlu login admin, cukup input mandiri di sini.</div>
+              </div>
+            </div>
+            <a href="ambil-barang.html" style="background: linear-gradient(135deg, #0d9488, #059669); color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; padding: 9px 16px; border-radius: 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);">
+              <span>Input Pengambilan</span> <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
         </div>
 
         <!-- Card Legal Notice Footer -->
@@ -270,6 +286,16 @@
           <i class="bi bi-arrow-left-right"></i>
           <span>Mutasi & Transaksi</span>
         </div>
+
+        <div class="nav-section-title">Layanan Mandiri Lemari</div>
+        <div class="nav-item" onclick="openCabinetQrModal()" style="cursor: pointer;">
+          <i class="bi bi-qr-code-scan" style="color: #818cf8;"></i>
+          <span>Barcode Lemari (QR)</span>
+        </div>
+        <a href="ambil-barang.html" target="_blank" class="nav-item" style="text-decoration: none;">
+          <i class="bi bi-box-arrow-up-right" style="color: #34d399;"></i>
+          <span>Form Ambil Mandiri</span>
+        </a>
 
         <div class="nav-section-title">Tata Kelola & Laporan</div>
         <div class="nav-item" data-tab="officers">
@@ -334,6 +360,11 @@
           <button class="btn-primary-action" style="background:linear-gradient(135deg,#0d9488,#059669);" id="btnOpenTrxKeluar">
             <i class="bi bi-box-arrow-up-right"></i>
             <span>+ Distribusi Keluar</span>
+          </button>
+
+          <button class="btn-primary-action" style="background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;" id="btnOpenQrModal" onclick="openCabinetQrModal()" title="Cetak Barcode / QR Code Lemari Persediaan">
+            <i class="bi bi-qr-code-scan"></i>
+            <span>Barcode Lemari</span>
           </button>
 
           <button class="topbar-logout-btn" id="topbarLogoutBtn" title="Keluar / Logout dari Sistem">
@@ -557,6 +588,30 @@
               <button class="btn-primary-action" style="background:linear-gradient(135deg,#0d9488,#059669);" onclick="openModal('modalTrxKeluar')">
                 <i class="bi bi-box-arrow-up-right"></i> Catat Distribusi
               </button>
+              <button class="btn-primary-action" style="background:linear-gradient(135deg,#6366f1,#4f46e5);" onclick="openCabinetQrModal()">
+                <i class="bi bi-qr-code-scan"></i> Barcode Lemari (Stiker)
+              </button>
+            </div>
+          </div>
+
+          <!-- Highlight Banner: Self-Service Barcode Lemari Persediaan -->
+          <div class="qr-banner-card">
+            <div class="qr-banner-left">
+              <div class="qr-banner-icon">
+                <i class="bi bi-qr-code-scan"></i>
+              </div>
+              <div class="qr-banner-text">
+                <h3>Sistem Barcode Pengambilan Mandiri Lemari Persediaan</h3>
+                <p>Tempel stiker barcode di lemari. Setiap pegawai yang mengambil barang wajib scan barcode & menginput barang yang diambil tanpa perlu login admin.</p>
+              </div>
+            </div>
+            <div class="qr-banner-actions">
+              <button type="button" class="btn-primary-action" style="background:linear-gradient(135deg,#6366f1,#4f46e5);" onclick="openCabinetQrModal()">
+                <i class="bi bi-printer"></i> Cetak Stiker Lemari
+              </button>
+              <a href="ambil-barang.html" target="_blank" class="btn-primary-action" style="background:rgba(255,255,255,0.08);border:1px solid var(--border-color);color:var(--text-main);text-decoration:none;">
+                <i class="bi bi-box-arrow-up-right"></i> Uji Coba Formulir
+              </a>
             </div>
           </div>
 
@@ -1078,10 +1133,163 @@
     </div>
   </div>
 
+  <!-- ====================================================================
+       MODAL: GENERATE & CETAK BARCODE STIKER LEMARI PERSEDIAAN
+       ==================================================================== -->
+  <div class="modal-overlay" id="modalQrLemari">
+    <div class="modal-card" style="max-width: 860px; width: 95%;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-qr-code-scan" style="color: #6366f1;"></i>
+          <span>Barcode Lemari Persediaan &bull; Pengambilan Mandiri</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalQrLemari')"><i class="bi bi-x-lg"></i></button>
+      </div>
+
+      <div class="modal-body qr-modal-body">
+        
+        <!-- KOLOM KIRI: PREVIEW STIKER LEMARI SIAP CETAK -->
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <i class="bi bi-eye-fill"></i> Tampilan Stiker Siap Cetak (Ditempel di Lemari)
+          </div>
+
+          <div id="cabinetStickerPrintArea" class="cabinet-sticker-print-area">
+            <div class="cabinet-sticker-wrapper">
+              
+              <div class="cabinet-sticker-header">
+                <img src="logo-kemenimipas.png" alt="Logo Kemenimipas" class="cabinet-sticker-logo">
+                <div class="cabinet-sticker-titles">
+                  <div class="cabinet-sticker-kemen">Kementerian Imigrasi dan Pemasyarakatan R.I.</div>
+                  <div class="cabinet-sticker-rutan">RUTAN KELAS II B SIAK SRI INDRAPURA</div>
+                  <div class="cabinet-sticker-uakpb">UAKPB: 137.04.0900.692310.000.KD &bull; REGISTER BMN</div>
+                </div>
+              </div>
+
+              <div class="cabinet-sticker-main-title">LEMARI PENYIMPANAN PERSEDIAAN</div>
+              <div class="cabinet-sticker-sub-title">FORMULIR MANDIRI PENGAMBILAN BARANG PERSEDIAAN</div>
+
+              <div class="cabinet-sticker-qr-box">
+                <div id="cabinetQrCodeCanvas"></div>
+              </div>
+
+              <div class="cabinet-sticker-steps">
+                <div class="cabinet-sticker-steps-title">
+                  <i class="bi bi-phone-fill" style="color:#0d9488;"></i> Petunjuk Pengambilan Barang:
+                </div>
+                <div class="sticker-step-item">
+                  <span class="sticker-step-num">1</span>
+                  <span>Arahkan kamera smartphone ke kode QR di atas (tidak perlu login admin).</span>
+                </div>
+                <div class="sticker-step-item">
+                  <span class="sticker-step-num">2</span>
+                  <span>Isi nama Anda, bagian/unit, serta pilih barang & jumlah yang diambil.</span>
+                </div>
+                <div class="sticker-step-item">
+                  <span class="sticker-step-num">3</span>
+                  <span>Tekan konfirmasi dan tutup kembali lemari dalam keadaan rapi & terkunci.</span>
+                </div>
+              </div>
+
+              <div class="cabinet-sticker-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i> PERHATIAN: Setiap pegawai yang mengambil barang wajib mencatat pada sistem ini demi akuntabilitas pengelolaan Barang Milik Negara (BMN).
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- KOLOM KANAN: PENGATURAN & AKSI PENCETAKAN -->
+        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="bi bi-sliders"></i> Informasi & Pengaturan Barcode
+            </div>
+
+            <div style="background: var(--bg-card-sub); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+              <label style="display: block; font-size: 11.5px; font-weight: 700; color: var(--text-sub); margin-bottom: 6px;">
+                Tautan Akses Formulir (URL Target QR):
+              </label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="targetQrUrlInput" class="form-control" style="font-size: 12px; padding: 8px 12px;" readonly>
+                <button type="button" class="btn-secondary" onclick="copyCabinetQrLink()" title="Salin Tautan" style="padding: 8px 14px;">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
+                QR code ini otomatis dibuat mengarah ke halaman mandiri <code>ambil-barang.html</code>.
+              </div>
+            </div>
+
+            <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: #a5b4fc; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <i class="bi bi-info-circle-fill"></i> Cara Kerja Sistem Lemari:
+              </div>
+              <ul style="font-size: 11.5px; color: var(--text-sub); padding-left: 18px; line-height: 1.5; margin: 0;">
+                <li>Cetak stiker ini dan tempelkan di pintu lemari penyimpanan persediaan.</li>
+                <li>Siapapun pegawai (staf, regu jaga, medis, TU, bimker) yang membuka lemari tinggal scan barcode.</li>
+                <li>Stok barang di sistem otomatis berkurang seketika (real-time).</li>
+                <li>Mutasi keluar langsung tercatat rapi di Buku Mutasi SIM-Persediaan.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button type="button" class="btn-primary-action" style="background: linear-gradient(135deg, #0d9488, #059669); justify-content: center; padding: 13px;" onclick="printCabinetSticker()">
+              <i class="bi bi-printer-fill"></i>
+              <span>Cetak Stiker Lemari (Print Label)</span>
+            </button>
+
+            <button type="button" class="btn-primary-action" style="background: linear-gradient(135deg, #6366f1, #4f46e5); justify-content: center; padding: 13px;" onclick="downloadCabinetQr()">
+              <i class="bi bi-download"></i>
+              <span>Unduh Gambar Barcode (PNG)</span>
+            </button>
+
+            <a href="ambil-barang.html" target="_blank" class="btn-secondary" style="justify-content: center; padding: 11px; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+              <i class="bi bi-box-arrow-up-right"></i>
+              <span>Uji Coba Buka Formulir Pegawai</span>
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('modalQrLemari')">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PREVIEW TANDA TANGAN / PARAF DIGITAL TRANSAKSI -->
+  <div class="modal-overlay" id="modalPreviewSig">
+    <div class="modal-card" style="max-width: 420px; text-align: center;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-pen-fill" style="color: #0d9488;"></i>
+          <span>Paraf / Bukti Pengambilan Mandiri</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalPreviewSig')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <div style="background: #0b1320; border: 1.5px dashed var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+          <img id="sigPreviewImage" alt="Paraf Petugas" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="sigPreviewMeta">
+          Paraf digital pegawai saat mengambil barang dari lemari persediaan.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('modalPreviewSig')">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JAVASCRIPT ASSETS -->
+  <script src="qrcode.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
