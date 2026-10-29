@@ -163,7 +163,8 @@
                 <div class="qu-name">Fajar Gustiawan, S.E</div>
                 <div class="qu-role">Pengelola Aset & Persediaan (BMN)</div>
                 <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>fajar</strong> &bull; Sandi:
-                  <strong>fajar123</strong></div>
+                  <strong>fajar123</strong>
+                </div>
               </div>
               <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
             </button>
@@ -176,7 +177,8 @@
                 <div class="qu-name">Muhammad Kurniawan, S.E.</div>
                 <div class="qu-role">Bendahara Pengeluaran</div>
                 <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>kurniawan</strong> &bull; Sandi:
-                  <strong>kurniawan123</strong></div>
+                  <strong>kurniawan123</strong>
+                </div>
               </div>
               <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
             </button>
@@ -189,7 +191,8 @@
                 <div class="qu-name">Rizky Firmansyah, S.E.</div>
                 <div class="qu-role">Penyusunan Rencana Anggaran</div>
                 <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>rizky</strong> &bull; Sandi:
-                  <strong>rizky123</strong></div>
+                  <strong>rizky123</strong>
+                </div>
               </div>
               <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
             </button>
@@ -202,7 +205,8 @@
                 <div class="qu-name">Dedy Krihastoni, A.Md.IP,S.H</div>
                 <div class="qu-role">Kepala Rutan (KPA)</div>
                 <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>karutan</strong> &bull; Sandi:
-                  <strong>karutan123</strong></div>
+                  <strong>karutan123</strong>
+                </div>
               </div>
               <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
             </button>
@@ -215,7 +219,8 @@
                 <div class="qu-name">Administrator Sistem BMN</div>
                 <div class="qu-role">Hak Akses Penuh Sistem & Pengaturan</div>
                 <div class="qu-badge"><i class="bi bi-key-fill"></i> User: <strong>admin</strong> &bull; Sandi:
-                  <strong>adminrutan2026</strong></div>
+                  <strong>adminrutan2026</strong>
+                </div>
               </div>
               <div class="qu-arrow"><i class="bi bi-chevron-right"></i></div>
             </button>
@@ -316,6 +321,11 @@
           <i class="bi bi-printer-fill"></i>
           <span>Cetak Dokumen Resmi</span>
         </div>
+        <div class="nav-item" onclick="openModal('modalSupabaseConfig')" style="cursor: pointer;">
+          <i class="bi bi-database-fill-gear" style="color: #3ecf8e;"></i>
+          <span>Database Supabase</span>
+          <span class="nav-badge" style="background: rgba(62, 207, 142, 0.2); color: #3ecf8e;">Cloud</span>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -343,8 +353,9 @@
           <div class="page-title-box">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <h1 id="pageMainTitle">Beranda & Ringkasan Persediaan</h1>
-              <div class="db-sync-pill offline" id="dbSyncPill"
-                title="Status Sinkronisasi Real-Time Database Lokal Komputer">
+              <div class="db-sync-pill offline" id="dbSyncPill" onclick="openModal('modalSupabaseConfig')"
+                title="Status Sinkronisasi Real-Time (Klik untuk Pengaturan Supabase / Server Lokal)"
+                style="cursor: pointer;">
                 <span class="sync-dot"></span>
                 <span id="dbSyncText">Penyimpanan Browser (Offline)</span>
               </div>
@@ -1373,10 +1384,81 @@
     </div>
   </div>
 
+  <!-- MODAL KONFIGURASI SUPABASE CLOUD DATABASE REAL-TIME -->
+  <div class="modal-overlay" id="modalSupabaseConfig">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="bi bi-database-fill-gear" style="color: #3ecf8e;"></i>
+          <span>Pengaturan Supabase Cloud Database</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalSupabaseConfig')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 22px;">
+        <div
+          style="background: rgba(62, 207, 142, 0.08); border: 1px solid rgba(62, 207, 142, 0.25); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--text-main); margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+          <i class="bi bi-broadcast" style="color: #3ecf8e; font-size: 18px; margin-top: 1px; flex-shrink: 0;"></i>
+          <div>
+            <strong>Koneksi Real-Time Supabase:</strong><br>
+            Hubungkan proyek Supabase Anda agar input mutasi di PC langsung muncul di HP pegawai yang sedang scan
+            barcode lemari (meskipun menggunakan paket data seluler 4G).
+          </div>
+        </div>
+
+        <form id="formSupabaseConfig" onsubmit="handleSaveSupabaseConfig(event)">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; margin-bottom: 6px; display: block;">
+              Supabase Project URL <span style="color: #ef4444;">*</span>
+            </label>
+            <input type="url" id="inputSupabaseUrl" class="form-control"
+              placeholder="https://xxxxxxxxxxxxxxxxxxxx.supabase.co" required
+              style="font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+            <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">Supabase
+              Dashboard &rarr; Project Settings &rarr; API &rarr; Project URL</small>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; margin-bottom: 6px; display: block;">
+              Supabase Anon Public API Key <span style="color: #ef4444;">*</span>
+            </label>
+            <textarea id="inputSupabaseKey" class="form-control" rows="3"
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required
+              style="font-size: 11px; font-family: 'JetBrains Mono', monospace; word-break: break-all; resize: vertical;"></textarea>
+            <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">Supabase
+              Dashboard &rarr; Project Settings &rarr; API &rarr; Project API keys (anon public)</small>
+          </div>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+            <button type="submit" class="btn-primary-action" style="padding: 9px 18px; font-size: 12.5px;">
+              <i class="bi bi-check-circle-fill"></i> Simpan & Hubungkan
+            </button>
+            <button type="button" class="btn-secondary" onclick="testSupabaseConnection()"
+              style="padding: 9px 16px; font-size: 12.5px;">
+              <i class="bi bi-broadcast"></i> Uji Koneksi
+            </button>
+            <button type="button" class="btn-secondary" id="btnUploadSeedToSupabase" onclick="uploadAllDataToSupabase()"
+              style="padding: 9px 16px; font-size: 12.5px; background: rgba(37, 99, 235, 0.12); border-color: rgba(37, 99, 235, 0.3); color: #60a5fa;">
+              <i class="bi bi-cloud-arrow-up-fill"></i> Unggah 1.194 Master Barang
+            </button>
+          </div>
+        </form>
+
+        <div id="supabaseSyncStatusBox"
+          style="display: none; padding: 12px; border-radius: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-top: 10px;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('modalSupabaseConfig')">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JAVASCRIPT ASSETS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="qrcode.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
