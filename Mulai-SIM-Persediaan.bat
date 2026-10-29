@@ -11,9 +11,6 @@ echo ======================================================================
 echo.
 echo  [*] Memeriksa Engine Server Komputer...
 
-REM Buka browser otomatis dalam 2 detik di background
-start "" /b cmd /c "timeout /t 2 /nobreak >nul && start http://localhost:3000"
-
 where node >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     echo  [OK] Node.js terdeteksi. Menjalankan server berkecepatan tinggi...
