@@ -364,8 +364,15 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`  [+] Form Ambil Barang (QR)    : http://${localIp}:${PORT}/ambil-barang.html`);
   console.log(`  [+] Folder Penyimpanan Fisik  : ${DB_DIR}`);
   console.log("======================================================================");
+  console.log("  Server siap! Membuka peramban otomatis...");
   console.log("  Tekan Ctrl+C di jendela ini untuk menghentikan server.");
   console.log("======================================================================");
+
+  // Buka browser otomatis begitu server benar-benar siap
+  try {
+    const { exec } = require("child_process");
+    exec(`start http://localhost:${PORT}`);
+  } catch (_) {}
 });
 
 // Keep-alive ping ke seluruh klien SSE setiap 20 detik
