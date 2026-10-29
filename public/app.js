@@ -762,14 +762,45 @@ function saveOfficers() {
 // FUNGSI PENGATURAN SUPABASE & UNGGAH DATA MASTER
 // ====================================================================
 
+/**
+ * Guard: Buka modal konfigurasi Supabase hanya jika user adalah Admin.
+ * Non-admin akan mendapat notifikasi peringatan.
+ */
+function openSupabaseConfigIfAdmin() {
+  if (!AppState.currentUser || !AppState.currentUser.isAdmin) {
+    showToast("⛔ Hanya Administrator yang dapat mengakses pengaturan database.", "danger");
+    return;
+  }
+  // Muat ulang nilai input sebelum membuka modal
+  loadSupabaseFormInputs();
+  openModal("modalSupabaseConfig");
+}
+
 function loadSupabaseFormInputs() {
   const urlInput = document.getElementById("inputSupabaseUrl");
   const keyInput = document.getElementById("inputSupabaseKey");
+
+  const savedUrl = localStorage.getItem("sim_supabase_url") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.url : "") || "";
+  const savedKey = localStorage.getItem("sim_supabase_anon_key") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.anonKey : "") || "";
+
   if (urlInput) {
-    urlInput.value = localStorage.getItem("sim_supabase_url") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.url : "") || "";
+    urlInput.value = savedUrl;
   }
   if (keyInput) {
-    keyInput.value = localStorage.getItem("sim_supabase_anon_key") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.anonKey : "") || "";
+    // Tampilkan nilai asli agar bisa diedit — masking hanya di label info
+    keyInput.value = savedKey;
+  }
+
+  // Tampilkan label info jika key sudah tersimpan
+  const keyInfoLabel = document.getElementById("supabaseKeyInfoLabel");
+  if (keyInfoLabel) {
+    if (savedKey && savedKey.length > 20) {
+      const masked = savedKey.substring(0, 12) + "••••••••" + savedKey.substring(savedKey.length - 6);
+      keyInfoLabel.textContent = "Key tersimpan: " + masked;
+      keyInfoLabel.style.display = "block";
+    } else {
+      keyInfoLabel.style.display = "none";
+    }
   }
 }
 
@@ -1017,6 +1048,13 @@ function updateActiveOfficerUI() {
   if (footAvatar) {
     const initials = current.nama.split(" ").map(n => n[0]).slice(0, 2).join("");
     footAvatar.textContent = initials;
+  }
+
+  // ── Admin-gating: Tampilkan menu Database Supabase hanya untuk admin ──
+  const navSupabase = document.getElementById("navItemSupabaseConfig");
+  if (navSupabase) {
+    const isAdmin = AppState.currentUser && AppState.currentUser.isAdmin;
+    navSupabase.style.display = isAdmin ? "flex" : "none";
   }
 }
 
