@@ -1,0 +1,42 @@
+﻿[
+    {
+        "id":  "fajar",
+        "nama":  "Fajar Gustiawan, S.E",
+        "jabatan":  "Pengelola Aset dan Persediaan (BMN)",
+        "peran":  "Pengelola Persediaan / Gudang",
+        "nip":  "19950925 201712 1 003",
+        "pangkat":  "Pengatur / II.c",
+        "kontak":  "0852-4942-3056",
+        "isPrimary":  true
+    },
+    {
+        "id":  "kurniawan",
+        "nama":  "Muhammad Kurniawan, S.E.",
+        "jabatan":  "Bendahara Pengeluaran",
+        "peran":  "Verifikator \u0026 Bendahara",
+        "nip":  "19981003 201712 1 002",
+        "pangkat":  "Pengatur / II.c",
+        "kontak":  "0822-8373-0737",
+        "isPrimary":  false
+    },
+    {
+        "id":  "rizky",
+        "nama":  "Rizky Firmansyah, S.E.",
+        "jabatan":  "Penyusunan Rencana Anggaran",
+        "peran":  "Perencana \u0026 Alokasi Anggaran",
+        "nip":  "20010424 202203 1 003",
+        "pangkat":  "Pengatur Muda Tk. I / II.b",
+        "kontak":  "0821-7341-4511",
+        "isPrimary":  false
+    },
+    {
+        "id":  "karutan",
+        "nama":  "Dedy Krihastoni, A.Md.IP,S.H",
+        "jabatan":  "Kepala Rumah Tahanan Negara",
+        "peran":  "Kuasa Pengguna Anggaran (KPA)",
+        "nip":  "19841217 200701 1 004",
+        "pangkat":  "Penata Tk. I / III.d",
+        "kontak":  "0821-4486-8905",
+        "isPrimary":  false
+    }
+]

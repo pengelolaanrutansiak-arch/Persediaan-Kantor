@@ -1,0 +1,62 @@
+﻿[
+    {
+        "username":  "fajar",
+        "password":  "fajar123",
+        "officerId":  "fajar",
+        "nama":  "Fajar Gustiawan, S.E",
+        "jabatan":  "Pengelola Aset dan Persediaan (BMN)",
+        "peran":  "Pengelola Persediaan / Gudang",
+        "nip":  "19950925 201712 1 003",
+        "nipClean":  "199509252017121003",
+        "isAdmin":  true,
+        "avatar":  "FG"
+    },
+    {
+        "username":  "kurniawan",
+        "password":  "kurniawan123",
+        "officerId":  "kurniawan",
+        "nama":  "Muhammad Kurniawan, S.E.",
+        "jabatan":  "Bendahara Pengeluaran",
+        "peran":  "Verifikator \u0026 Bendahara",
+        "nip":  "19981003 201712 1 002",
+        "nipClean":  "199810032017121002",
+        "isAdmin":  false,
+        "avatar":  "MK"
+    },
+    {
+        "username":  "rizky",
+        "password":  "rizky123",
+        "officerId":  "rizky",
+        "nama":  "Rizky Firmansyah, S.E.",
+        "jabatan":  "Penyusunan Rencana Anggaran",
+        "peran":  "Perencana \u0026 Alokasi Anggaran",
+        "nip":  "20010424 202203 1 003",
+        "nipClean":  "200104242022031003",
+        "isAdmin":  false,
+        "avatar":  "RF"
+    },
+    {
+        "username":  "karutan",
+        "password":  "karutan123",
+        "officerId":  "karutan",
+        "nama":  "Dedy Krihastoni, A.Md.IP,S.H",
+        "jabatan":  "Kepala Rumah Tahanan Negara",
+        "peran":  "Kuasa Pengguna Anggaran (KPA)",
+        "nip":  "19841217 200701 1 004",
+        "nipClean":  "198412172007011004",
+        "isAdmin":  true,
+        "avatar":  "DK"
+    },
+    {
+        "username":  "admin",
+        "password":  "adminrutan2026",
+        "officerId":  "fajar",
+        "nama":  "Administrator Sistem BMN",
+        "jabatan":  "Super Administrator SIM-Persediaan",
+        "peran":  "Administrator Sistem \u0026 Keamanan",
+        "nip":  "19950925 201712 1 003",
+        "nipClean":  "admin",
+        "isAdmin":  true,
+        "avatar":  "ADM"
+    }
+]
