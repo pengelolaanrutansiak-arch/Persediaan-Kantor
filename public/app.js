@@ -50,7 +50,7 @@ function initAuth() {
 
   // Check saved session in localStorage (remember me) or sessionStorage
   const rawSession = localStorage.getItem("sim_auth_session") || sessionStorage.getItem("sim_auth_session");
-  
+
   if (rawSession) {
     try {
       const session = JSON.parse(rawSession);
@@ -84,7 +84,7 @@ function initAuth() {
 
 function startLoginClock() {
   if (AppState.loginClockTimer) clearInterval(AppState.loginClockTimer);
-  
+
   const updateClock = () => {
     const clockEl = document.getElementById("loginLiveClock");
     if (!clockEl) return;
@@ -103,7 +103,7 @@ function getRegisteredAuthUsers() {
   try {
     const raw = localStorage.getItem("sim_custom_users");
     if (raw) customUsers = JSON.parse(raw);
-  } catch (e) {}
+  } catch (e) { }
 
   if (Array.isArray(customUsers) && customUsers.length > 0) {
     return customUsers;
@@ -415,14 +415,15 @@ function executeLogout() {
 }
 
 // ====================================================================
-// MODUL PENYIMPANAN DATA LOKAL & SINKRONISASI REAL-TIME
+// MODUL PENYIMPANAN DATA: SUPABASE CLOUD REAL-TIME & LOCAL STORAGE
 // ====================================================================
 
 let inventorySaveDebounce = null;
 let transactionsSaveDebounce = null;
+let supabaseRealtimeChannel = null;
 
-// Seed and Sync Data with LocalStorage & Server Fisik Lokal
-function initData() {
+// Seed and Sync Data with Supabase Cloud, Local Server, or Browser Cache
+async function initData() {
   const CURRENT_DATA_VERSION = "2026.10.v4_full_1194";
   const storedVersion = localStorage.getItem("sim_rutan_version");
   const storedInventory = localStorage.getItem("sim_rutan_inventory");
@@ -474,21 +475,81 @@ function initData() {
     document.documentElement.setAttribute("data-theme", storedTheme);
   }
 
-  // 2. Hubungkan ke Server Penyimpanan Fisik Komputer (Real-Time Baca-Tulis)
-  checkAndConnectLocalServer();
+  // 2. Hubungkan ke Database Pusat (Supabase Cloud Real-time / Local Server)
+  await checkAndConnectDatabase();
+
+  // 3. Muat kredensial Supabase ke input form modal
+  loadSupabaseFormInputs();
 }
 
-async function checkAndConnectLocalServer() {
-  updateDbStatusUI("syncing", "Menghubungkan Server Lokal...");
+async function checkAndConnectDatabase() {
+  const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+
+  // JALUR 1: Jika Supabase Cloud telah dikonfigurasi
+  if (supabase) {
+    updateDbStatusUI("syncing", "Menghubungkan Supabase Cloud...");
+    try {
+      // Ambil data inventory dari Supabase
+      const { data: invData, error: errInv } = await supabase
+        .from("inventory")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (errInv) {
+        console.warn("Supabase query error:", errInv.message);
+        throw errInv;
+      }
+
+      if (invData && invData.length > 0) {
+        AppState.inventory = invData;
+        localStorage.setItem("sim_rutan_inventory", JSON.stringify(invData));
+      }
+
+      // Ambil data transactions dari Supabase
+      const { data: trxData } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (trxData && trxData.length > 0) {
+        AppState.transactions = trxData;
+        localStorage.setItem("sim_rutan_transactions", JSON.stringify(trxData));
+      }
+
+      // Ambil data officers dari Supabase
+      const { data: offData } = await supabase.from("officers").select("*");
+      if (offData && offData.length > 0) {
+        AppState.officers = offData;
+        localStorage.setItem("sim_rutan_officers", JSON.stringify(offData));
+      }
+
+      AppState.serverConnected = true;
+      AppState.syncSource = "supabase";
+      updateDbStatusUI("online", "Supabase Cloud: Real-Time Aktif");
+
+      if (AppState.isAuthenticated) {
+        renderApp();
+      }
+
+      // Aktifkan Real-Time Listener Supabase
+      subscribeSupabaseRealtime(supabase);
+      return;
+    } catch (err) {
+      console.warn("Gagal terhubung ke Supabase:", err.message);
+      // Lanjut ke fallback server lokal
+    }
+  }
+
+  // JALUR 2: Fallback ke Server Lokal Komputer jika ada
   try {
     const res = await fetch("/api/data", { cache: "no-store" });
     if (res.ok) {
       const json = await res.json();
       if (json && json.success && json.data) {
         AppState.serverConnected = true;
+        AppState.syncSource = "local_server";
         AppState.lastSyncTimestamp = json.lastModified || Date.now();
 
-        // Utamakan data fisik dari harddisk komputer (database/*.json)
         if (Array.isArray(json.data.inventory) && json.data.inventory.length > 0) {
           AppState.inventory = json.data.inventory;
           localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
@@ -502,23 +563,18 @@ async function checkAndConnectLocalServer() {
           localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
         }
 
-        updateDbStatusUI("online", "Server Lokal Fisik Aktif (Real-Time)");
-
-        if (AppState.isAuthenticated) {
-          renderApp();
-        }
-
-        // Aktifkan listener real-time SSE dan background sync
+        updateDbStatusUI("online", "Server Fisik Lokal: Terhubung");
+        if (AppState.isAuthenticated) renderApp();
         startRealtimeListener();
         return;
       }
     }
-  } catch (err) {
-    // Berjalan normal tanpa server lokal (misal offline file:/// atau web hosting)
-  }
+  } catch (_) { }
 
+  // JALUR 3: Mode Standalone Browser (Belum tersambung Supabase)
   AppState.serverConnected = false;
-  updateDbStatusUI("offline", "Penyimpanan Browser (Offline)");
+  AppState.syncSource = "offline";
+  updateDbStatusUI("offline", "Penyimpanan Browser (Klik utk Sambung Supabase)");
 }
 
 function updateDbStatusUI(state, text) {
@@ -529,47 +585,73 @@ function updateDbStatusUI(state, text) {
   if (txt) txt.textContent = text;
 }
 
-function startRealtimeListener() {
-  // 1. Server-Sent Events (SSE) untuk push event instan
-  if (window.EventSource) {
-    try {
-      if (AppState.sseSource) {
-        AppState.sseSource.close();
-      }
-      const sse = new EventSource("/api/events");
-      AppState.sseSource = sse;
-
-      sse.addEventListener("connected", () => {
-        updateDbStatusUI("online", "Database Lokal Real-Time Aktif");
-      });
-
-      sse.addEventListener("item_taken", (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-          reloadFromServerSilently(`[QR Lemari] ${payload.petugas} mengambil ${payload.jumlah} ${payload.barang}`);
-        } catch (_) {}
-      });
-
-      sse.addEventListener("inventory_updated", () => {
-        reloadFromServerSilently("Pembaruan stok inventaris fisik diterima");
-      });
-
-      sse.addEventListener("transactions_updated", () => {
-        reloadFromServerSilently("Pembaruan riwayat mutasi buku diterima");
-      });
-
-      sse.onerror = () => {
-        // SSE terputus sementara, polling cadangan tetap berjalan
-      };
-    } catch (err) {
-      console.warn("Inisialisasi SSE real-time error:", err);
-    }
+// Berlangganan Event Real-time Supabase (WebSocket)
+function subscribeSupabaseRealtime(supabase) {
+  if (supabaseRealtimeChannel) {
+    try { supabase.removeChannel(supabaseRealtimeChannel); } catch (_) { }
   }
 
-  // 2. Background Sync Polling (Pemeriksaan berkala setiap 3 detik)
+  try {
+    supabaseRealtimeChannel = supabase
+      .channel("sim_persediaan_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, (payload) => {
+        if (payload.eventType === "UPDATE" && payload.new) {
+          const idx = AppState.inventory.findIndex(i => i.id === payload.new.id);
+          if (idx !== -1) {
+            AppState.inventory[idx] = payload.new;
+          } else {
+            AppState.inventory.push(payload.new);
+          }
+          localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+          if (AppState.isAuthenticated) renderApp();
+        } else if (payload.eventType === "INSERT" && payload.new) {
+          const idx = AppState.inventory.findIndex(i => i.id === payload.new.id);
+          if (idx === -1) {
+            AppState.inventory.push(payload.new);
+            localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+            if (AppState.isAuthenticated) renderApp();
+          }
+        }
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "transactions" }, (payload) => {
+        if (payload.new) {
+          const exists = AppState.transactions.some(t => t.id === payload.new.id);
+          if (!exists) {
+            AppState.transactions.unshift(payload.new);
+            localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
+            if (AppState.isAuthenticated) {
+              renderApp();
+              showToast(`[Real-Time Supabase] Mutasi baru: ${payload.new.namaBarang} (${payload.new.jumlah} ${payload.new.satuan}) oleh ${payload.new.penerima || payload.new.petugas}`, "success");
+            }
+          }
+        }
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          updateDbStatusUI("online", "Supabase Cloud: Real-Time Aktif");
+        }
+      });
+  } catch (err) {
+    console.warn("Gagal inisialisasi Realtime Supabase:", err);
+  }
+}
+
+// Fallback Server Lokal SSE & Polling
+function startRealtimeListener() {
+  if (window.EventSource) {
+    try {
+      if (AppState.sseSource) AppState.sseSource.close();
+      const sse = new EventSource("/api/events");
+      AppState.sseSource = sse;
+      sse.addEventListener("item_taken", () => reloadFromServerSilently());
+      sse.addEventListener("inventory_updated", () => reloadFromServerSilently());
+      sse.addEventListener("transactions_updated", () => reloadFromServerSilently());
+    } catch (_) { }
+  }
+
   if (AppState.pollTimer) clearInterval(AppState.pollTimer);
   AppState.pollTimer = setInterval(async () => {
-    if (!AppState.serverConnected) return;
+    if (!AppState.serverConnected || AppState.syncSource !== "local_server") return;
     try {
       const res = await fetch(`/api/sync-poll?since=${AppState.lastSyncTimestamp || 0}`, { cache: "no-store" });
       if (res.ok) {
@@ -579,10 +661,7 @@ function startRealtimeListener() {
           reloadFromServerSilently();
         }
       }
-    } catch (_) {
-      AppState.serverConnected = false;
-      updateDbStatusUI("offline", "Server Terputus (Mode Browser)");
-    }
+    } catch (_) { }
   }, 3000);
 }
 
@@ -600,67 +679,236 @@ async function reloadFromServerSilently(noticeText) {
           AppState.transactions = json.data.transactions;
           localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
         }
-        AppState.lastSyncTimestamp = json.lastModified || Date.now();
-
         if (AppState.isAuthenticated) {
           renderApp();
-          if (noticeText) {
-            showToast(noticeText, "info");
-          }
+          if (noticeText) showToast(noticeText, "info");
         }
       }
     }
-  } catch (err) {
-    console.warn("Gagal reload data dari server lokal:", err);
-  }
+  } catch (_) { }
 }
 
-// Simpan Inventaris ke Browser & Tulis Langsung ke File Fisik database/inventory.json
+// Simpan Inventaris (ke Browser, Supabase Cloud, dan Local Server)
 function saveInventory() {
   localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
-  
-  if (AppState.serverConnected) {
+
+  // Simpan ke Supabase Cloud jika terhubung
+  const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+  if (supabase && AppState.syncSource === "supabase") {
     if (inventorySaveDebounce) clearTimeout(inventorySaveDebounce);
-    inventorySaveDebounce = setTimeout(() => {
-      fetch("/api/inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(AppState.inventory)
-      }).catch(err => console.warn("Gagal simpan inventory ke disk lokal:", err));
-    }, 250);
+    inventorySaveDebounce = setTimeout(async () => {
+      try {
+        await supabase.from("inventory").upsert(AppState.inventory, { onConflict: "id" });
+      } catch (err) {
+        console.warn("Gagal simpan inventory ke Supabase:", err);
+      }
+    }, 400);
+  }
+
+  // Simpan ke server fisik lokal jika aktif
+  if (AppState.serverConnected && AppState.syncSource === "local_server") {
+    fetch("/api/inventory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(AppState.inventory)
+    }).catch(() => { });
   }
 }
 
-// Simpan Transaksi ke Browser & Tulis Langsung ke File Fisik database/transactions.json
+// Simpan Transaksi (ke Browser, Supabase Cloud, dan Local Server)
 function saveTransactions() {
   localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
 
-  if (AppState.serverConnected) {
+  const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+  if (supabase && AppState.syncSource === "supabase") {
     if (transactionsSaveDebounce) clearTimeout(transactionsSaveDebounce);
-    transactionsSaveDebounce = setTimeout(() => {
-      fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(AppState.transactions)
-      }).catch(err => console.warn("Gagal simpan transaksi ke disk lokal:", err));
-    }, 200);
+    transactionsSaveDebounce = setTimeout(async () => {
+      try {
+        await supabase.from("transactions").upsert(AppState.transactions, { onConflict: "id" });
+      } catch (err) {
+        console.warn("Gagal simpan transaksi ke Supabase:", err);
+      }
+    }, 250);
+  }
+
+  if (AppState.serverConnected && AppState.syncSource === "local_server") {
+    fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(AppState.transactions)
+    }).catch(() => { });
   }
 }
 
-// Simpan Pejabat ke Browser & Tulis ke database/officers.json
+// Simpan Pejabat (ke Browser, Supabase Cloud, dan Local Server)
 function saveOfficers() {
   localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
 
-  if (AppState.serverConnected) {
+  const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+  if (supabase && AppState.syncSource === "supabase") {
+    supabase.from("officers").upsert(AppState.officers, { onConflict: "id" }).catch(() => { });
+  }
+
+  if (AppState.serverConnected && AppState.syncSource === "local_server") {
     fetch("/api/officers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(AppState.officers)
-    }).catch(err => console.warn("Gagal simpan pejabat ke disk lokal:", err));
+    }).catch(() => { });
   }
 }
 
-// Sinkronisasi Real-time Antar Tab (misal saat formulir dibuka di tab berbeda)
+// ====================================================================
+// FUNGSI PENGATURAN SUPABASE & UNGGAH DATA MASTER
+// ====================================================================
+
+function loadSupabaseFormInputs() {
+  const urlInput = document.getElementById("inputSupabaseUrl");
+  const keyInput = document.getElementById("inputSupabaseKey");
+  if (urlInput) {
+    urlInput.value = localStorage.getItem("sim_supabase_url") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.url : "") || "";
+  }
+  if (keyInput) {
+    keyInput.value = localStorage.getItem("sim_supabase_anon_key") || (window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.anonKey : "") || "";
+  }
+}
+
+async function handleSaveSupabaseConfig(e) {
+  if (e) e.preventDefault();
+  const url = (document.getElementById("inputSupabaseUrl").value || "").trim();
+  const key = (document.getElementById("inputSupabaseKey").value || "").trim();
+
+  if (!url || !key) {
+    showToast("URL dan Anon Key Supabase wajib diisi!", "danger");
+    return;
+  }
+
+  saveSupabaseConfig(url, key);
+  showToast("Pengaturan Supabase disimpan. Menguji koneksi...", "info");
+
+  await checkAndConnectDatabase();
+  closeModal("modalSupabaseConfig");
+}
+
+async function testSupabaseConnection() {
+  const url = (document.getElementById("inputSupabaseUrl").value || "").trim();
+  const key = (document.getElementById("inputSupabaseKey").value || "").trim();
+  const box = document.getElementById("supabaseSyncStatusBox");
+
+  if (!url || !key) {
+    showToast("Isi URL dan Anon Key terlebih dahulu!", "danger");
+    return;
+  }
+
+  if (!window.supabase) {
+    showToast("Library Supabase belum termuat. Periksa koneksi internet Anda.", "danger");
+    return;
+  }
+
+  if (box) {
+    box.style.display = "block";
+    box.style.background = "rgba(37, 99, 235, 0.15)";
+    box.style.color = "#93c5fd";
+    box.innerHTML = `<i class="bi bi-arrow-repeat spin"></i> Menghubungkan ke Supabase...`;
+  }
+
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { data, error } = await testClient.from("inventory").select("id").limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (box) {
+      box.style.background = "rgba(16, 185, 129, 0.15)";
+      box.style.color = "#6ee7b7";
+      box.innerHTML = `<i class="bi bi-check-circle-fill"></i> KONEKSI BERHASIL! Supabase aktif dan siap digunakan untuk real-time sync.`;
+    }
+    showToast("Koneksi ke Supabase Berhasil!", "success");
+  } catch (err) {
+    if (box) {
+      box.style.background = "rgba(239, 68, 68, 0.15)";
+      box.style.color = "#fca5a5";
+      box.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> GAGAL: ${err.message}<br><small>Pastikan Anda telah menjalankan skrip SQL di Supabase SQL Editor!</small>`;
+    }
+    showToast("Koneksi Supabase Gagal: " + err.message, "danger");
+  }
+}
+
+async function uploadAllDataToSupabase() {
+  const url = (document.getElementById("inputSupabaseUrl").value || "").trim();
+  const key = (document.getElementById("inputSupabaseKey").value || "").trim();
+  const box = document.getElementById("supabaseSyncStatusBox");
+  const btn = document.getElementById("btnUploadSeedToSupabase");
+
+  if (!url || !key) {
+    showToast("Simpan URL dan Key Supabase terlebih dahulu!", "danger");
+    return;
+  }
+
+  saveSupabaseConfig(url, key);
+  const client = getSupabaseClient();
+  if (!client) {
+    showToast("Gagal membuat client Supabase.", "danger");
+    return;
+  }
+
+  if (box) {
+    box.style.display = "block";
+    box.style.background = "rgba(37, 99, 235, 0.15)";
+    box.style.color = "#93c5fd";
+    box.innerHTML = `<i class="bi bi-arrow-repeat spin"></i> Memulai unggah 1.194 master barang ke Supabase...`;
+  }
+  if (btn) btn.disabled = true;
+
+  try {
+    // 1. Batch upload inventory (100 item per batch)
+    const BATCH_SIZE = 100;
+    const items = [...AppState.inventory];
+    const total = items.length;
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const chunk = items.slice(i, i + BATCH_SIZE);
+      const { error } = await client.from("inventory").upsert(chunk, { onConflict: "id" });
+      if (error) throw error;
+
+      if (box) {
+        box.innerHTML = `<i class="bi bi-arrow-repeat spin"></i> Mengunggah master barang: ${Math.min(i + BATCH_SIZE, total)} dari ${total} item...`;
+      }
+    }
+
+    // 2. Upload transactions
+    if (AppState.transactions && AppState.transactions.length > 0) {
+      if (box) box.innerHTML = `<i class="bi bi-arrow-repeat spin"></i> Mengunggah data mutasi transaksi...`;
+      await client.from("transactions").upsert(AppState.transactions, { onConflict: "id" });
+    }
+
+    // 3. Upload officers
+    if (AppState.officers && AppState.officers.length > 0) {
+      await client.from("officers").upsert(AppState.officers, { onConflict: "id" });
+    }
+
+    if (box) {
+      box.style.background = "rgba(16, 185, 129, 0.15)";
+      box.style.color = "#6ee7b7";
+      box.innerHTML = `<i class="bi bi-check-circle-fill"></i> SUKSES BESAR! Seluruh 1.194 Master Barang dan Riwayat Mutasi berhasil diunggah ke Supabase Cloud!`;
+    }
+    showToast("1.194 Data Persediaan Berhasil Diunggah ke Supabase!", "success");
+    await checkAndConnectDatabase();
+  } catch (err) {
+    if (box) {
+      box.style.background = "rgba(239, 68, 68, 0.15)";
+      box.style.color = "#fca5a5";
+      box.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Gagal mengunggah: ${err.message}<br><small>Pastikan tabel "inventory" sudah dibuat di Supabase SQL Editor.</small>`;
+    }
+    showToast("Unggah ke Supabase gagal: " + err.message, "danger");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Sinkronisasi Real-time Antar Tab (storage event)
 window.addEventListener("storage", (e) => {
   if (e.key === "sim_rutan_inventory" || e.key === "sim_rutan_transactions") {
     try {
@@ -673,9 +921,7 @@ window.addEventListener("storage", (e) => {
       if (AppState.isAuthenticated) {
         renderApp();
       }
-    } catch (err) {
-      console.warn("Sinkronisasi data lemari persediaan error:", err);
-    }
+    } catch (_) { }
   }
 });
 
@@ -715,8 +961,8 @@ function setupNavigation() {
       AppState.theme = AppState.theme === "light" ? "dark" : "light";
       document.documentElement.setAttribute("data-theme", AppState.theme);
       localStorage.setItem("sim_rutan_theme", AppState.theme);
-      themeToggle.innerHTML = AppState.theme === "light" 
-        ? '<i class="bi bi-moon-stars"></i>' 
+      themeToggle.innerHTML = AppState.theme === "light"
+        ? '<i class="bi bi-moon-stars"></i>'
         : '<i class="bi bi-sun"></i>';
     });
   }
@@ -762,7 +1008,7 @@ function updateActiveOfficerUI() {
   const current = getActiveOfficer();
   const select = document.getElementById("topbarOfficerSelect");
   if (select) select.value = current.id;
-  
+
   const footName = document.getElementById("sidebarFootOfficerName");
   const footRole = document.getElementById("sidebarFootOfficerRole");
   const footAvatar = document.getElementById("sidebarFootAvatar");
@@ -936,7 +1182,7 @@ function renderInventoryTable() {
   // Filter
   let filtered = AppState.inventory.filter(item => {
     // Search
-    const matchesSearch = !AppState.searchQuery || 
+    const matchesSearch = !AppState.searchQuery ||
       item.namaBarang.toLowerCase().includes(AppState.searchQuery) ||
       item.kdBarang.toLowerCase().includes(AppState.searchQuery) ||
       item.kdSubKelompok.toLowerCase().includes(AppState.searchQuery) ||
@@ -1086,7 +1332,7 @@ function renderTransactionsTable() {
 
   tbody.innerHTML = trxs.map((trx, idx) => {
     const isQrMandiri = trx.subJenis === "MANDIRI_QR" || (trx.noDok && trx.noDok.startsWith("QR-OUT"));
-    
+
     let jenisBadge = "";
     if (isQrMandiri) {
       jenisBadge = `<span class="badge-qr-lemari" title="Pengambilan mandiri dari lemari persediaan via scan barcode"><i class="bi bi-qr-code"></i> Lemari (Scan)</span>`;
@@ -1388,8 +1634,8 @@ function renderSearchableResults(prefix, query) {
     }).slice(0, 40); // Batasi 40 hasil untuk performa instan
 
     if (countInfo) {
-      countInfo.innerHTML = matches.length > 0 
-        ? `Ditemukan <strong>${matches.length}</strong> barang persediaan yang cocok:` 
+      countInfo.innerHTML = matches.length > 0
+        ? `Ditemukan <strong>${matches.length}</strong> barang persediaan yang cocok:`
         : `Hasil Pencarian`;
     }
   }
@@ -1407,7 +1653,7 @@ function renderSearchableResults(prefix, query) {
   list.innerHTML = matches.map(item => {
     const stockClass = item.stokAkhir > 0 ? "in-stock" : "empty-stock";
     const stockText = item.stokAkhir > 0 ? `Stok: ${item.stokAkhir} ${item.satuan}` : `Stok Habis (0 ${item.satuan})`;
-    
+
     // Highlight kata kunci yang dicari
     let titleHtml = escapeHtmlSafe(item.namaBarang);
     if (query) {
@@ -2183,9 +2429,9 @@ function updateReportPreview() {
         </thead>
         <tbody>
           ${categories.map((cat, idx) => {
-            const catItems = AppState.inventory.filter(i => i.kategori === cat);
-            const catQty = catItems.reduce((acc, curr) => acc + (Number(curr.stokAkhir) || 0), 0);
-            return `
+      const catItems = AppState.inventory.filter(i => i.kategori === cat);
+      const catQty = catItems.reduce((acc, curr) => acc + (Number(curr.stokAkhir) || 0), 0);
+      return `
               <tr>
                 <td style="text-align:center;">${idx + 1}</td>
                 <td style="font-weight:700;">${cat}</td>
@@ -2197,7 +2443,7 @@ function updateReportPreview() {
                 <td style="font-size:8.5pt;">Gudang Utama Rutan Siak</td>
               </tr>
             `;
-          }).join("")}
+    }).join("")}
           <tr style="background:#e5e7eb;font-weight:bold;">
             <td colspan="2" style="text-align:right;padding:6px;">TOTAL KESELURUHAN MASTER PERSEDIAAN :</td>
             <td style="text-align:center;">${AppState.inventory.length} Item</td>
@@ -2321,7 +2567,7 @@ function exportInventoryToCSV() {
     `"${i.keterangan || ''}"`
   ]);
 
-  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
     + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
 
   const encodedUri = encodeURI(csvContent);
@@ -2514,7 +2760,7 @@ function downloadCabinetQr() {
 
   let dataUrl = "";
   if (canvas) {
-    try { dataUrl = canvas.toDataURL("image/png"); } catch (e) {}
+    try { dataUrl = canvas.toDataURL("image/png"); } catch (e) { }
   }
   if (!dataUrl && img && img.src) {
     dataUrl = img.src;
