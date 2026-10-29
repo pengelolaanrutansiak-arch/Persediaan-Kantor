@@ -3053,5 +3053,71 @@ body {
   }
 }
 
+/* ==================================================================== */
+/* REAL-TIME LOCAL DATABASE SYNC STATUS PILL */
+/* ==================================================================== */
+.db-sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  user-select: none;
+  cursor: help;
+  line-height: 1;
+}
+
+.db-sync-pill .sync-dot {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.db-sync-pill.online {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.db-sync-pill.online .sync-dot {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
+}
+
+.db-sync-pill.offline {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.db-sync-pill.offline .sync-dot {
+  background: #f59e0b;
+}
+
+.db-sync-pill.syncing {
+  background: rgba(37, 99, 235, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+.db-sync-pill.syncing .sync-dot {
+  background: #3b82f6;
+  animation: pulseSyncDot 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseSyncDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.4;
+  }
+}
+
+
 
 
