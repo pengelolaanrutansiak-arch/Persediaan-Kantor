@@ -1191,6 +1191,8 @@
   </div>
 
   <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="data.js"></script>
   <script>
     // ========================================================
@@ -1215,7 +1217,7 @@
       document.getElementById("pengambilNama").focus();
     });
 
-    // Inisialisasi Database Sinkron dengan LocalStorage & Server Fisik Komputer
+    // Inisialisasi Database: Supabase Cloud Real-time, Server Komputer, atau Cache Perangkat
     async function initDatabase() {
       // Muat awal dari cache lokal perangkat agar pencarian langsung siap
       try {
@@ -1244,11 +1246,30 @@
         console.error("Gagal memuat database persediaan:", e);
       }
 
-      // Hubungkan ke Server Komputer BMN Pusat secara Real-Time
+      // Hubungkan ke Database Pusat (Supabase Cloud / Local Server)
       checkServerConnection();
     }
 
     async function checkServerConnection() {
+      // 1. Prioritaskan Supabase Cloud Database (Bisa diakses dari sinyal 4G/WiFi)
+      const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.from("inventory").select("*").order("id", { ascending: true });
+          if (!error && Array.isArray(data) && data.length > 0) {
+            inventoryData = data;
+            localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
+            updateServerBadge(true, "Supabase Cloud Terhubung");
+            renderItemList();
+            subscribeSupabaseRealtimePhone(supabase);
+            return;
+          }
+        } catch (err) {
+          console.warn("Supabase fetch gagal di HP:", err);
+        }
+      }
+
+      // 2. Coba Server Lokal jika dalam satu jaringan WiFi kantor
       try {
         const res = await fetch("/api/data", { cache: "no-store" });
         if (res.ok) {
@@ -1258,26 +1279,46 @@
             transactionsData = json.data.transactions || [];
             localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
             localStorage.setItem("sim_rutan_transactions", JSON.stringify(transactionsData));
-            updateServerBadge(true);
+            updateServerBadge(true, "Server Lokal Terhubung");
             renderItemList();
             connectRealtimeSSE();
             return;
           }
         }
       } catch (_) {}
+
       updateServerBadge(false);
     }
 
-    function updateServerBadge(isOnline) {
+    function updateServerBadge(isOnline, labelText) {
       const badge = document.getElementById("qrServerStatusBadge");
       if (!badge) return;
       if (isOnline) {
-        badge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 6px #10b981;"></span> Server Komputer BMN Terhubung`;
+        badge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 6px #10b981;"></span> ${labelText || "Database Terhubung"}`;
         badge.style.color = "#10b981";
       } else {
         badge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> Mode Mandiri (Browser)`;
         badge.style.color = "#f59e0b";
       }
+    }
+
+    function subscribeSupabaseRealtimePhone(supabase) {
+      try {
+        supabase.channel("phone_inventory_realtime")
+          .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, (payload) => {
+            if (payload.eventType === "UPDATE" && payload.new) {
+              const idx = inventoryData.findIndex(i => i.id === payload.new.id);
+              if (idx !== -1) {
+                inventoryData[idx] = payload.new;
+                renderItemList();
+              }
+            } else if (payload.eventType === "INSERT" && payload.new) {
+              inventoryData.push(payload.new);
+              renderItemList();
+            }
+          })
+          .subscribe();
+      } catch (_) {}
     }
 
     function connectRealtimeSSE() {
@@ -1630,7 +1671,26 @@
         console.warn("Gagal menyimpan ke localStorage:", err);
       }
 
-      // 2. Kirim mutasi langsung ke Server Fisik Komputer BMN (Tulis ke disk & broadcast realtime)
+      // 2. Kirim mutasi ke Supabase Cloud (Sinkronisasi Real-Time 4G/Internet)
+      const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+      if (supabase) {
+        supabase.from("inventory").update({
+          stokAkhir: selectedItem.stokAkhir,
+          stokKeluar: selectedItem.stokKeluar,
+          kondisi: selectedItem.stokAkhir > 0 ? "Tersedia" : "Habis",
+          updated_at: new Date().toISOString()
+        }).eq("id", selectedItem.id).then(() => {
+          updateServerBadge(true, "Supabase Terhubung");
+        }).catch(err => {
+          console.warn("Gagal update item ke Supabase:", err);
+        });
+
+        supabase.from("transactions").insert([newTransaction]).catch(err => {
+          console.warn("Gagal insert transaksi ke Supabase:", err);
+        });
+      }
+
+      // 3. Kirim mutasi ke Server Fisik Komputer jika dalam WiFi lokal
       try {
         fetch('/api/take-item', {
           method: 'POST',
@@ -1642,10 +1702,8 @@
             stokAkhir: selectedItem.stokAkhir
           })
         }).then(res => {
-          if (res.ok) updateServerBadge(true);
-        }).catch(() => {
-          updateServerBadge(false);
-        });
+          if (res.ok && !supabase) updateServerBadge(true, "Server Lokal Terhubung");
+        }).catch(() => {});
       } catch (_) {}
 
       // Tampilkan Bukti Resi Sukses
