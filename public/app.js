@@ -21,7 +21,11 @@ const AppState = {
   theme: "light",
   currentUser: null,
   isAuthenticated: false,
-  loginClockTimer: null
+  loginClockTimer: null,
+  serverConnected: false,
+  sseSource: null,
+  pollTimer: null,
+  lastSyncTimestamp: 0
 };
 
 // Initialization
@@ -410,7 +414,14 @@ function executeLogout() {
   showToast("Sesi kedinasan berhasil diakhiri dengan aman.", "success");
 }
 
-// Seed and Sync Data with LocalStorage
+// ====================================================================
+// MODUL PENYIMPANAN DATA LOKAL & SINKRONISASI REAL-TIME
+// ====================================================================
+
+let inventorySaveDebounce = null;
+let transactionsSaveDebounce = null;
+
+// Seed and Sync Data with LocalStorage & Server Fisik Lokal
 function initData() {
   const CURRENT_DATA_VERSION = "2026.10.v4_full_1194";
   const storedVersion = localStorage.getItem("sim_rutan_version");
@@ -419,7 +430,7 @@ function initData() {
   const storedOfficers = localStorage.getItem("sim_rutan_officers");
   const storedTheme = localStorage.getItem("sim_rutan_theme");
 
-  // Jika versi data diperbarui atau jumlah data belum mencakup seluruh 1.194 barang, sinkronkan otomatis
+  // 1. Muat awal dari cache peramban agar UI langsung responsif
   let needsSync = (storedVersion !== CURRENT_DATA_VERSION) || !storedInventory;
   if (!needsSync && storedInventory) {
     try {
@@ -434,11 +445,11 @@ function initData() {
 
   if (needsSync) {
     AppState.officers = [...PENGELOLA_KEUANGAN];
-    saveOfficers();
     AppState.inventory = [...MASTER_INVENTORY_DATA];
-    saveInventory();
     AppState.transactions = [...DEFAULT_TRANSACTIONS];
-    saveTransactions();
+    localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
+    localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+    localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
     localStorage.setItem("sim_rutan_version", CURRENT_DATA_VERSION);
   } else {
     try {
@@ -462,21 +473,194 @@ function initData() {
     AppState.theme = storedTheme;
     document.documentElement.setAttribute("data-theme", storedTheme);
   }
+
+  // 2. Hubungkan ke Server Penyimpanan Fisik Komputer (Real-Time Baca-Tulis)
+  checkAndConnectLocalServer();
 }
 
+async function checkAndConnectLocalServer() {
+  updateDbStatusUI("syncing", "Menghubungkan Server Lokal...");
+  try {
+    const res = await fetch("/api/data", { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && json.data) {
+        AppState.serverConnected = true;
+        AppState.lastSyncTimestamp = json.lastModified || Date.now();
+
+        // Utamakan data fisik dari harddisk komputer (database/*.json)
+        if (Array.isArray(json.data.inventory) && json.data.inventory.length > 0) {
+          AppState.inventory = json.data.inventory;
+          localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+        }
+        if (Array.isArray(json.data.transactions)) {
+          AppState.transactions = json.data.transactions;
+          localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
+        }
+        if (Array.isArray(json.data.officers) && json.data.officers.length > 0) {
+          AppState.officers = json.data.officers;
+          localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
+        }
+
+        updateDbStatusUI("online", "Server Lokal Fisik Aktif (Real-Time)");
+
+        if (AppState.isAuthenticated) {
+          renderApp();
+        }
+
+        // Aktifkan listener real-time SSE dan background sync
+        startRealtimeListener();
+        return;
+      }
+    }
+  } catch (err) {
+    // Berjalan normal tanpa server lokal (misal offline file:/// atau web hosting)
+  }
+
+  AppState.serverConnected = false;
+  updateDbStatusUI("offline", "Penyimpanan Browser (Offline)");
+}
+
+function updateDbStatusUI(state, text) {
+  const pill = document.getElementById("dbSyncPill");
+  const txt = document.getElementById("dbSyncText");
+  if (!pill) return;
+  pill.className = `db-sync-pill ${state}`;
+  if (txt) txt.textContent = text;
+}
+
+function startRealtimeListener() {
+  // 1. Server-Sent Events (SSE) untuk push event instan
+  if (window.EventSource) {
+    try {
+      if (AppState.sseSource) {
+        AppState.sseSource.close();
+      }
+      const sse = new EventSource("/api/events");
+      AppState.sseSource = sse;
+
+      sse.addEventListener("connected", () => {
+        updateDbStatusUI("online", "Database Lokal Real-Time Aktif");
+      });
+
+      sse.addEventListener("item_taken", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          reloadFromServerSilently(`[QR Lemari] ${payload.petugas} mengambil ${payload.jumlah} ${payload.barang}`);
+        } catch (_) {}
+      });
+
+      sse.addEventListener("inventory_updated", () => {
+        reloadFromServerSilently("Pembaruan stok inventaris fisik diterima");
+      });
+
+      sse.addEventListener("transactions_updated", () => {
+        reloadFromServerSilently("Pembaruan riwayat mutasi buku diterima");
+      });
+
+      sse.onerror = () => {
+        // SSE terputus sementara, polling cadangan tetap berjalan
+      };
+    } catch (err) {
+      console.warn("Inisialisasi SSE real-time error:", err);
+    }
+  }
+
+  // 2. Background Sync Polling (Pemeriksaan berkala setiap 3 detik)
+  if (AppState.pollTimer) clearInterval(AppState.pollTimer);
+  AppState.pollTimer = setInterval(async () => {
+    if (!AppState.serverConnected) return;
+    try {
+      const res = await fetch(`/api/sync-poll?since=${AppState.lastSyncTimestamp || 0}`, { cache: "no-store" });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.hasUpdate) {
+          AppState.lastSyncTimestamp = json.lastModified;
+          reloadFromServerSilently();
+        }
+      }
+    } catch (_) {
+      AppState.serverConnected = false;
+      updateDbStatusUI("offline", "Server Terputus (Mode Browser)");
+    }
+  }, 3000);
+}
+
+async function reloadFromServerSilently(noticeText) {
+  try {
+    const res = await fetch("/api/data", { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data) {
+        if (Array.isArray(json.data.inventory)) {
+          AppState.inventory = json.data.inventory;
+          localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+        }
+        if (Array.isArray(json.data.transactions)) {
+          AppState.transactions = json.data.transactions;
+          localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
+        }
+        AppState.lastSyncTimestamp = json.lastModified || Date.now();
+
+        if (AppState.isAuthenticated) {
+          renderApp();
+          if (noticeText) {
+            showToast(noticeText, "info");
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Gagal reload data dari server lokal:", err);
+  }
+}
+
+// Simpan Inventaris ke Browser & Tulis Langsung ke File Fisik database/inventory.json
 function saveInventory() {
   localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+  
+  if (AppState.serverConnected) {
+    if (inventorySaveDebounce) clearTimeout(inventorySaveDebounce);
+    inventorySaveDebounce = setTimeout(() => {
+      fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(AppState.inventory)
+      }).catch(err => console.warn("Gagal simpan inventory ke disk lokal:", err));
+    }, 250);
+  }
 }
 
+// Simpan Transaksi ke Browser & Tulis Langsung ke File Fisik database/transactions.json
 function saveTransactions() {
   localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
+
+  if (AppState.serverConnected) {
+    if (transactionsSaveDebounce) clearTimeout(transactionsSaveDebounce);
+    transactionsSaveDebounce = setTimeout(() => {
+      fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(AppState.transactions)
+      }).catch(err => console.warn("Gagal simpan transaksi ke disk lokal:", err));
+    }, 200);
+  }
 }
 
+// Simpan Pejabat ke Browser & Tulis ke database/officers.json
 function saveOfficers() {
   localStorage.setItem("sim_rutan_officers", JSON.stringify(AppState.officers));
+
+  if (AppState.serverConnected) {
+    fetch("/api/officers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(AppState.officers)
+    }).catch(err => console.warn("Gagal simpan pejabat ke disk lokal:", err));
+  }
 }
 
-// Sinkronisasi Real-time Antar Tab (misal saat pegawai mengisi formulir via QR di ambil-barang.html)
+// Sinkronisasi Real-time Antar Tab (misal saat formulir dibuka di tab berbeda)
 window.addEventListener("storage", (e) => {
   if (e.key === "sim_rutan_inventory" || e.key === "sim_rutan_transactions") {
     try {
