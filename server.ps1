@@ -88,7 +88,7 @@ try {
     $useHttpListener = $false
 }
 
-Clear-Host
+try { Clear-Host } catch {}
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host "  SIM-PERSEDIAAN KANTOR RUTAN KELAS II B SIAK SRI INDRAPURA" -ForegroundColor White
 Write-Host "  SERVER DATABASE FISIK LOKAL & REAL-TIME BACA-TULIS (POWERSHELL)" -ForegroundColor Green
@@ -103,6 +103,11 @@ Write-Host "====================================================================
 Write-Host "  Server sedang berjalan aktif. Jendela ini jangan ditutup." -ForegroundColor Gray
 Write-Host "  Tekan Ctrl+C untuk menghentikan server." -ForegroundColor Gray
 Write-Host ""
+
+# Buka browser otomatis sekarang karena server sudah siap menerima koneksi
+try {
+    Start-Process "http://localhost:$Port"
+} catch {}
 
 if ($useHttpListener) {
     # Mode 1: HttpListener (Standard Windows)
