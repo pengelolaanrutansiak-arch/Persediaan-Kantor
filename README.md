@@ -46,9 +46,24 @@ Jika Anda memiliki Node.js / Vercel CLI terpasang di komputer:
 
 ---
 
-### Metode 3: Buka Secara Langsung di Komputer (Offline / Tanpa Hosting)
-Aplikasi ini juga bekerja 100% secara offline tanpa server:
-- Cukup **klik dua kali (double click)** pada file `index.html` di komputer Anda untuk membuka aplikasi langsung di browser Google Chrome, Microsoft Edge, atau Firefox.
+### Metode 3: Server Database Lokal & Real-Time (Sangat Direkomendasikan)
+Untuk menjalankan aplikasi dengan **baca-tulis langsung ke file fisik di komputer** dan **sinkronisasi real-time antar perangkat (PC Admin & HP Pegawai via WiFi)**:
+1. Cukup **klik dua kali (double click)** file:
+   📁 **`Mulai-SIM-Persediaan.bat`**
+2. Jendela server otomatis aktif dan peramban browser langsung terbuka di alamat `http://localhost:3000`.
+3. Pegawai lain di kantor yang terhubung ke WiFi yang sama dapat mengakses menu ambil barang di lemari via ponsel di:
+   `http://<IP-Komputer-Anda>:3000/ambil-barang.html`
+4. Seluruh data tersimpan permanen sebagai file fisik di folder:
+   📁 **`database/`**
+   - `inventory.json` (1.194 data master barang)
+   - `transactions.json` (Buku register mutasi keluar-masuk)
+   - `officers.json` (Daftar pejabat pengelola persediaan & BMN)
+   - `users.json` (Kredensial akun resmi pejabat)
+
+---
+
+### Metode 4: Buka Secara Mandiri (Standalone Offline / Browser Cache)
+- Cukup **klik dua kali (double click)** file `public/index.html` untuk membuka langsung di peramban tanpa server lokal. Data akan disimpan di `localStorage` peramban.
 
 ---
 
