@@ -1264,9 +1264,43 @@
             subscribeSupabaseRealtimePhone(supabase);
             return;
           }
+          // Supabase terhubung tapi data kosong — kemungkinan tabel belum diisi
+          if (!error && Array.isArray(data) && data.length === 0) {
+            updateServerBadge(false, "⚠ Supabase kosong — muat data dari cache");
+          }
         } catch (err) {
           console.warn("Supabase fetch gagal di HP:", err);
         }
+      } else {
+        // Supabase tidak terkonfigurasi di perangkat ini
+        // Cek apakah ada credentials yang bisa digunakan dari URL hash (fallback darurat)
+        try {
+          const hash = window.location.hash;
+          if (hash && hash.startsWith("#sb=")) {
+            const decoded = JSON.parse(atob(hash.slice(4)));
+            if (decoded && decoded.u && decoded.k && window.supabase) {
+              const fallbackClient = window.supabase.createClient(decoded.u, decoded.k, {
+                auth: { persistSession: false, autoRefreshToken: false }
+              });
+              const { data, error } = await fallbackClient.from("inventory").select("*").order("id", { ascending: true });
+              if (!error && Array.isArray(data) && data.length > 0) {
+                inventoryData = data;
+                localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
+                // Simpan juga untuk next visit
+                localStorage.setItem("sim_supabase_url", decoded.u);
+                localStorage.setItem("sim_supabase_anon_key", decoded.k);
+                if (window.SUPABASE_CONFIG) {
+                  window.SUPABASE_CONFIG.url = decoded.u;
+                  window.SUPABASE_CONFIG.anonKey = decoded.k;
+                }
+                updateServerBadge(true, "Supabase Cloud Terhubung");
+                renderItemList();
+                subscribeSupabaseRealtimePhone(fallbackClient);
+                return;
+              }
+            }
+          }
+        } catch (_) {}
       }
 
       // 2. Coba Server Lokal jika dalam satu jaringan WiFi kantor
@@ -1287,7 +1321,27 @@
         }
       } catch (_) {}
 
+      // 3. Mode offline — data dari cache perangkat ini
       updateServerBadge(false);
+      // Tampilkan info jika stok di cache mungkin sudah usang
+      showOfflineWarning();
+    }
+
+    function showOfflineWarning() {
+      const existing = document.getElementById("offlineWarningBanner");
+      if (existing) return;
+      const banner = document.createElement("div");
+      banner.id = "offlineWarningBanner";
+      banner.style.cssText = "background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#fcd34d;margin:0 0 14px 0;display:flex;gap:10px;align-items:flex-start;";
+      banner.innerHTML = `
+        <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;margin-top:1px;flex-shrink:0;"></i>
+        <div>
+          <strong>Mode Offline — Data mungkin belum diperbarui.</strong><br>
+          Perangkat ini belum terhubung ke Supabase Cloud. Hubungi Admin untuk melakukan
+          <em>"Download supabase-config.js"</em> dan deploy ulang ke Vercel agar sinkronisasi otomatis.
+        </div>`;
+      const formArea = document.querySelector(".form-card") || document.querySelector(".main-form") || document.body;
+      formArea.prepend(banner);
     }
 
     function updateServerBadge(isOnline, labelText) {
