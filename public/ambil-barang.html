@@ -914,6 +914,9 @@
 
       <div class="time-strip">
         <span><i class="bi bi-geo-alt-fill text-primary"></i> Lemari Persediaan BMN (Lantai 1)</span>
+        <span id="qrServerStatusBadge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#f59e0b;font-weight:600;">
+          <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> Menghubungkan...
+        </span>
         <span class="live-time" id="liveClockDisplay">--:--:-- WIB</span>
       </div>
     </header>
@@ -1212,8 +1215,9 @@
       document.getElementById("pengambilNama").focus();
     });
 
-    // Inisialisasi Database Sinkron dengan LocalStorage SIM-Persediaan
-    function initDatabase() {
+    // Inisialisasi Database Sinkron dengan LocalStorage & Server Fisik Komputer
+    async function initDatabase() {
+      // Muat awal dari cache lokal perangkat agar pencarian langsung siap
       try {
         const rawInv = localStorage.getItem("sim_rutan_inventory");
         if (rawInv) {
@@ -1239,6 +1243,60 @@
       } catch (e) {
         console.error("Gagal memuat database persediaan:", e);
       }
+
+      // Hubungkan ke Server Komputer BMN Pusat secara Real-Time
+      checkServerConnection();
+    }
+
+    async function checkServerConnection() {
+      try {
+        const res = await fetch("/api/data", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.success && json.data && Array.isArray(json.data.inventory)) {
+            inventoryData = json.data.inventory;
+            transactionsData = json.data.transactions || [];
+            localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
+            localStorage.setItem("sim_rutan_transactions", JSON.stringify(transactionsData));
+            updateServerBadge(true);
+            renderItemList();
+            connectRealtimeSSE();
+            return;
+          }
+        }
+      } catch (_) {}
+      updateServerBadge(false);
+    }
+
+    function updateServerBadge(isOnline) {
+      const badge = document.getElementById("qrServerStatusBadge");
+      if (!badge) return;
+      if (isOnline) {
+        badge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 6px #10b981;"></span> Server Komputer BMN Terhubung`;
+        badge.style.color = "#10b981";
+      } else {
+        badge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> Mode Mandiri (Browser)`;
+        badge.style.color = "#f59e0b";
+      }
+    }
+
+    function connectRealtimeSSE() {
+      if (!window.EventSource) return;
+      try {
+        const sse = new EventSource("/api/events");
+        sse.addEventListener("item_taken", (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data && data.updatedItem) {
+              const idx = inventoryData.findIndex(i => i.id === data.updatedItem.id);
+              if (idx !== -1) {
+                inventoryData[idx] = data.updatedItem;
+                renderItemList();
+              }
+            }
+          } catch (_) {}
+        });
+      } catch (_) {}
     }
 
     // Jam Real-time
@@ -1564,13 +1622,31 @@
 
       transactionsData.push(newTransaction);
 
-      // Simpan ke LocalStorage agar langsung sinkron dengan Dashboard BMN Admin
+      // 1. Simpan ke LocalStorage agar langsung ada di browser perangkat ini
       try {
         localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
         localStorage.setItem("sim_rutan_transactions", JSON.stringify(transactionsData));
       } catch (err) {
         console.warn("Gagal menyimpan ke localStorage:", err);
       }
+
+      // 2. Kirim mutasi langsung ke Server Fisik Komputer BMN (Tulis ke disk & broadcast realtime)
+      try {
+        fetch('/api/take-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transaction: newTransaction,
+            barangId: selectedItem.id,
+            stokKeluar: jumlah,
+            stokAkhir: selectedItem.stokAkhir
+          })
+        }).then(res => {
+          if (res.ok) updateServerBadge(true);
+        }).catch(() => {
+          updateServerBadge(false);
+        });
+      } catch (_) {}
 
       // Tampilkan Bukti Resi Sukses
       showReceiptModal({
