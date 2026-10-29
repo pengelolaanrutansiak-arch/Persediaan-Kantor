@@ -1445,6 +1445,19 @@
               <i class="bi bi-cloud-arrow-up-fill"></i> Unggah 1.194 Master Barang
             </button>
           </div>
+          <!-- Tombol Ekspor Config — agar HP bisa terhubung otomatis tanpa isi ulang credentials -->
+          <div style="border-top: 1px solid rgba(62,207,142,0.15); padding-top: 12px; margin-top: 4px;">
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+              <i class="bi bi-info-circle-fill" style="color: #f59e0b;"></i>
+              <strong style="color: #fcd34d;">Agar HP otomatis terhubung tanpa input ulang:</strong>
+              Klik tombol di bawah &rarr; download file &rarr; replace file <code>supabase-config.js</code> di folder
+              <code>public/</code> &rarr; deploy ulang ke Vercel.
+            </p>
+            <button type="button" onclick="generateAndDownloadConfig()"
+              style="padding: 8px 15px; font-size: 12px; background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 7px;">
+              <i class="bi bi-download"></i> Download supabase-config.js (untuk deploy ke Vercel)
+            </button>
+          </div>
         </form>
 
         <div id="supabaseSyncStatusBox"
