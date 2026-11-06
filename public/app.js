@@ -2135,7 +2135,55 @@ function generateOfficialKopSuratHTML() {
 }
 
 function handleReportFormatChange() {
+  const formatSelect = document.getElementById("reportFormatSelect");
+  const docType = formatSelect ? formatSelect.value : "opname";
+  const mutasiPanel = document.getElementById("mutasiFilterPanel");
+  if (mutasiPanel) {
+    mutasiPanel.style.display = (docType === "mutasi") ? "flex" : "none";
+  }
   updateReportPreview();
+}
+
+function setMutasiQuickFilter(type) {
+  const jenisSel = document.getElementById("reportMutasiJenis");
+  const blnSel = document.getElementById("reportMutasiBulan");
+  const thnSel = document.getElementById("reportMutasiTahun");
+  const startInp = document.getElementById("reportMutasiDateStart");
+  const endInp = document.getElementById("reportMutasiDateEnd");
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  if (type === "all") {
+    if (jenisSel) jenisSel.value = "ALL";
+    if (blnSel) blnSel.value = "ALL";
+    if (thnSel) thnSel.value = "ALL";
+    if (startInp) startInp.value = "";
+    if (endInp) endInp.value = "";
+  } else if (type === "today") {
+    if (startInp) startInp.value = todayStr;
+    if (endInp) endInp.value = todayStr;
+  } else if (type === "this_month") {
+    if (startInp) startInp.value = "";
+    if (endInp) endInp.value = "";
+    if (blnSel) blnSel.value = pad(now.getMonth() + 1);
+    if (thnSel) thnSel.value = String(now.getFullYear());
+  } else if (type === "masuk") {
+    if (jenisSel) jenisSel.value = "MASUK";
+  } else if (type === "keluar") {
+    if (jenisSel) jenisSel.value = "KELUAR";
+  }
+
+  handleReportFormatChange();
+}
+
+function resetMutasiDateRange() {
+  const startInp = document.getElementById("reportMutasiDateStart");
+  const endInp = document.getElementById("reportMutasiDateEnd");
+  if (startInp) startInp.value = "";
+  if (endInp) endInp.value = "";
+  handleReportFormatChange();
 }
 
 function updateReportPreview() {
@@ -2149,6 +2197,11 @@ function updateReportPreview() {
   const docType = formatSelect ? formatSelect.value : "opname";
   const selectedCat = catFilter ? catFilter.value : "ALL";
   const signModel = signModelSelect ? signModelSelect.value : "4pejabat";
+
+  const mutasiPanel = document.getElementById("mutasiFilterPanel");
+  if (mutasiPanel) {
+    mutasiPanel.style.display = (docType === "mutasi") ? "flex" : "none";
+  }
 
   const kurniawan = AppState.officers.find(o => o.id === "kurniawan") || AppState.officers[1];
   const fajar = AppState.officers.find(o => o.id === "fajar") || AppState.officers[0];
@@ -2439,11 +2492,77 @@ function updateReportPreview() {
 
   // 3. LAPORAN MUTASI BARANG MASUK & KELUAR
   else if (docType === "mutasi") {
-    const trxs = [...AppState.transactions].reverse();
+    const jenisMutasi = document.getElementById("reportMutasiJenis") ? document.getElementById("reportMutasiJenis").value : "ALL";
+    const filterBulan = document.getElementById("reportMutasiBulan") ? document.getElementById("reportMutasiBulan").value : "ALL";
+    const filterTahun = document.getElementById("reportMutasiTahun") ? document.getElementById("reportMutasiTahun").value : "2026";
+    const dateStart = document.getElementById("reportMutasiDateStart") ? document.getElementById("reportMutasiDateStart").value : "";
+    const dateEnd = document.getElementById("reportMutasiDateEnd") ? document.getElementById("reportMutasiDateEnd").value : "";
+
+    const namaBulanMap = {
+      "01": "Januari", "02": "Februari", "03": "Maret", "04": "April",
+      "05": "Mei", "06": "Juni", "07": "Juli", "08": "Agustus",
+      "09": "September", "10": "Oktober", "11": "November", "12": "Desember"
+    };
+
+    // Filter data transaksi
+    let trxs = [...AppState.transactions].reverse();
+
+    // 1. Filter Kategori Persediaan jika dipilih
+    if (selectedCat !== "ALL") {
+      trxs = trxs.filter(t => {
+        const itm = AppState.inventory.find(i => String(i.id) === String(t.barangId) || i.namaBarang === t.namaBarang);
+        return itm && itm.kategori === selectedCat;
+      });
+    }
+
+    // 2. Filter Jenis Mutasi (MASUK / KELUAR)
+    if (jenisMutasi === "MASUK") {
+      trxs = trxs.filter(t => t.jenis === "MASUK");
+    } else if (jenisMutasi === "KELUAR") {
+      trxs = trxs.filter(t => t.jenis === "KELUAR");
+    }
+
+    // 3. Filter Waktu (Rentang Tanggal Spesifik ATAU Bulan & Tahun)
+    let periodeTeks = "Semua Periode";
+    if (dateStart && dateEnd) {
+      trxs = trxs.filter(t => t.tanggal && t.tanggal >= dateStart && t.tanggal <= dateEnd);
+      periodeTeks = `${dateStart} s/d ${dateEnd}`;
+    } else if (dateStart) {
+      trxs = trxs.filter(t => t.tanggal && t.tanggal >= dateStart);
+      periodeTeks = `Mulai ${dateStart}`;
+    } else if (dateEnd) {
+      trxs = trxs.filter(t => t.tanggal && t.tanggal <= dateEnd);
+      periodeTeks = `Sampai dengan ${dateEnd}`;
+    } else {
+      if (filterBulan !== "ALL" && filterTahun !== "ALL") {
+        trxs = trxs.filter(t => t.tanggal && t.tanggal.slice(0, 4) === filterTahun && t.tanggal.slice(5, 7) === filterBulan);
+        periodeTeks = `Bulan ${namaBulanMap[filterBulan]} ${filterTahun}`;
+      } else if (filterBulan !== "ALL") {
+        trxs = trxs.filter(t => t.tanggal && t.tanggal.slice(5, 7) === filterBulan);
+        periodeTeks = `Bulan ${namaBulanMap[filterBulan]}`;
+      } else if (filterTahun !== "ALL") {
+        trxs = trxs.filter(t => t.tanggal && t.tanggal.slice(0, 4) === filterTahun);
+        periodeTeks = `Tahun Anggaran ${filterTahun}`;
+      }
+    }
+
+    // Judul Dinamis berdasarkan filter
+    let judulMutasi = "LAPORAN BUKU MUTASI PENERIMAAN & DISTRIBUSI PENGELUARAN";
+    let subJudulMutasi = `PERIODE: ${periodeTeks.toUpperCase()} &bull; SATUAN KERJA RUTAN KELAS IIB SIAK`;
+    if (jenisMutasi === "MASUK") {
+      judulMutasi = "LAPORAN BUKU MUTASI PENERIMAAN BARANG PERSEDIAAN (BARANG MASUK)";
+    } else if (jenisMutasi === "KELUAR") {
+      judulMutasi = "LAPORAN BUKU MUTASI DISTRIBUSI & PENGELUARAN BARANG (BARANG KELUAR)";
+    }
+
+    // Total kuantitas mutasi
+    const totalMasuk = trxs.filter(t => t.jenis === "MASUK").reduce((acc, curr) => acc + (Number(curr.jumlah) || 0), 0);
+    const totalKeluar = trxs.filter(t => t.jenis === "KELUAR").reduce((acc, curr) => acc + (Number(curr.jumlah) || 0), 0);
+
     docContentHTML = `
       <div class="doc-header-block">
-        <h3 class="doc-main-title">LAPORAN BUKU MUTASI PENERIMAAN & DISTRIBUSI PENGELUARAN</h3>
-        <h4 class="doc-sub-title">PERIODE ANGGARAN TAHUN 2026 &bull; SATUAN KERJA RUTAN KELAS IIB SIAK</h4>
+        <h3 class="doc-main-title">${judulMutasi}</h3>
+        <h4 class="doc-sub-title">${subJudulMutasi}</h4>
       </div>
 
       <table class="doc-meta-table">
@@ -2453,7 +2572,7 @@ function updateReportPreview() {
           <td style="width:42%;">${SATKER_INFO.kodeUakpb}</td>
           <td style="width:16%;"><strong>Periode</strong></td>
           <td style="width:2%;">:</td>
-          <td style="width:22%;">Januari s/d September 2026</td>
+          <td style="width:22%; font-weight:700; color:#0f172a;">${periodeTeks}</td>
         </tr>
         <tr>
           <td><strong>UAKPB</strong></td>
@@ -2461,7 +2580,17 @@ function updateReportPreview() {
           <td>${SATKER_INFO.namaSatker}</td>
           <td><strong>Jumlah Transaksi</strong></td>
           <td>:</td>
-          <td>${trxs.length} Transaksi Tercatat</td>
+          <td>${trxs.length} Transaksi Tercatat (${jenisMutasi === 'ALL' ? 'Masuk & Keluar' : (jenisMutasi === 'MASUK' ? 'Penerimaan Saja' : 'Pengeluaran Saja')})</td>
+        </tr>
+        <tr>
+          <td><strong>Filter Kategori</strong></td>
+          <td>:</td>
+          <td>${selectedCat === 'ALL' ? 'Semua Kategori Persediaan' : selectedCat}</td>
+          <td><strong>Total Kuantitas Fisik</strong></td>
+          <td>:</td>
+          <td style="font-weight:700;">
+            ${jenisMutasi === 'ALL' ? `Masuk: +${totalMasuk.toLocaleString('id-ID')} | Keluar: -${totalKeluar.toLocaleString('id-ID')}` : (jenisMutasi === 'MASUK' ? `+${totalMasuk.toLocaleString('id-ID')} Satuan Fisik` : `-${totalKeluar.toLocaleString('id-ID')} Satuan Fisik`)}
+          </td>
         </tr>
       </table>
 
@@ -2470,29 +2599,43 @@ function updateReportPreview() {
           <tr>
             <th style="width:30px;">No</th>
             <th style="width:80px;">Tanggal</th>
-            <th style="width:120px;">No. Dokumen / SPK</th>
+            <th style="width:125px;">No. Dokumen / SPK</th>
             <th>Nama Barang Persediaan</th>
-            <th style="width:90px;">Jenis Mutasi</th>
-            <th style="width:80px;">Jumlah</th>
+            <th style="width:105px;">Jenis Mutasi</th>
+            <th style="width:85px;">Jumlah</th>
             <th>Sumber Penerimaan / Tujuan Distribusi</th>
-            <th style="width:110px;">Petugas Pengelola</th>
+            <th style="width:120px;">Petugas / Pengambil</th>
           </tr>
         </thead>
         <tbody>
-          ${trxs.map((trx, idx) => `
+          ${trxs.length === 0 ? `
             <tr>
-              <td style="text-align:center;">${idx + 1}</td>
-              <td style="text-align:center;">${trx.tanggal}</td>
-              <td style="font-family:monospace;font-size:8.5pt;">${trx.noDok}</td>
-              <td style="font-weight:600;">${trx.namaBarang}</td>
-              <td style="text-align:center;font-weight:bold;color:${trx.jenis === 'MASUK' ? '#059669' : '#e11d48'};">
-                ${trx.jenis === 'MASUK' ? '+ PENERIMAAN' : '- DISTRIBUSI'}
+              <td colspan="8" style="text-align:center;padding:26px;color:#64748b;font-style:italic;">
+                Tidak ada catatan mutasi transaksi pada kriteria filter yang dipilih (${periodeTeks}).
               </td>
-              <td style="text-align:right;font-weight:bold;">${trx.jumlah} ${trx.satuan}</td>
-              <td>${trx.tujuan || trx.sumber}</td>
-              <td style="font-size:8.5pt;">${trx.petugas.split(',')[0]}</td>
             </tr>
-          `).join("")}
+          ` : trxs.map((trx, idx) => {
+            const isMandiri = trx.subJenis === 'MANDIRI_QR' || (trx.noDok && trx.noDok.startsWith('QR-OUT'));
+            return `
+              <tr>
+                <td style="text-align:center;">${idx + 1}</td>
+                <td style="text-align:center;white-space:nowrap;">${trx.tanggal || '-'}</td>
+                <td style="font-family:monospace;font-size:8pt;">${trx.noDok || '-'}</td>
+                <td style="font-weight:600;">${trx.namaBarang}</td>
+                <td style="text-align:center;font-weight:bold;color:${trx.jenis === 'MASUK' ? '#059669' : '#e11d48'};font-size:8pt;">
+                  ${trx.jenis === 'MASUK' ? '+ PENERIMAAN' : (isMandiri ? '- MANDIRI LEMARI' : '- DISTRIBUSI')}
+                </td>
+                <td style="text-align:right;font-weight:bold;font-family:monospace;">
+                  ${trx.jenis === 'MASUK' ? '+' : '-'}${trx.jumlah} ${trx.satuan || 'PCS'}
+                </td>
+                <td style="font-size:8.5pt;">${trx.tujuan || trx.sumber || '-'}</td>
+                <td style="font-size:8.5pt;">
+                  ${trx.petugas ? trx.petugas.split(',')[0] : (trx.penerima || '-')}
+                  ${trx.signature ? '<span style="color:#0d9488;font-size:7.5pt;display:block;font-weight:600;">[Paraf Digital]</span>' : ''}
+                </td>
+              </tr>
+            `;
+          }).join("")}
         </tbody>
       </table>
 
