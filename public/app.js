@@ -2708,44 +2708,37 @@ function showToast(message, type = "success") {
 // ====================================================================
 
 let cabinetQrCodeInstance = null;
+const OFFICIAL_PUBLIC_URL = "https://persediaankantor-rutansiak.vercel.app/ambil-barang.html";
 
 function getCabinetQrTargetUrl() {
   try {
+    // 1. Cek jika admin pernah mengatur URL kustom manual
+    const savedCustom = localStorage.getItem("sim_custom_qr_url");
+    if (savedCustom && savedCustom.trim()) {
+      return savedCustom.trim();
+    }
+
     const loc = window.location;
 
-    // Akses lokal via file:// — kembalikan path file langsung
-    if (loc.protocol === "file:") {
-      let path = loc.pathname;
-      if (path.endsWith("index.html")) {
-        path = path.replace(/index\.html$/, "ambil-barang.html");
-      } else if (path.endsWith("/")) {
-        path += "ambil-barang.html";
+    // 2. Jika diakses langsung dari domain publik (misal di Vercel atau custom domain online)
+    const isLocal = loc.hostname === "localhost" || loc.hostname === "127.0.0.1" || loc.hostname === "" || loc.protocol === "file:";
+    if (!isLocal && loc.origin && loc.origin !== "null") {
+      let pathname = loc.pathname || "/";
+      const lastSlash = pathname.lastIndexOf("/");
+      const lastSegment = pathname.substring(lastSlash + 1);
+      if (lastSegment === "" || lastSegment.includes(".") || lastSegment === "index") {
+        pathname = pathname.substring(0, lastSlash + 1);
       } else {
-        path = path.substring(0, path.lastIndexOf("/") + 1) + "ambil-barang.html";
+        pathname = pathname + "/";
       }
-      return "file://" + path;
+      return `${loc.origin}${pathname}ambil-barang.html`;
     }
 
-    // HTTP/HTTPS: Hitung base dir dari pathname saat ini
-    const origin = loc.origin;
-    let pathname = loc.pathname || "/";
-
-    // Hapus nama file (index.html, index, dsb) sehingga hanya tersisa direktori
-    const lastSlash = pathname.lastIndexOf("/");
-    const lastSegment = pathname.substring(lastSlash + 1);
-    // Jika segmen terakhir mengandung titik (file) atau adalah "index", hapus
-    if (lastSegment === "" || lastSegment.includes(".") || lastSegment === "index") {
-      pathname = pathname.substring(0, lastSlash + 1);
-    } else {
-      pathname = pathname + "/";
-    }
-
-    // Vercel dengan cleanUrls=true: path tanpa .html
-    return `${origin}${pathname}ambil-barang`;
+    // 3. Jika dibuka dari komputer lokal / localhost / file:// saat mencetak stiker lemari:
+    // WAJIB gunakan URL Vercel publik online agar kamera HP pegawai di depan lemari bisa langsung mengakses!
+    return OFFICIAL_PUBLIC_URL;
   } catch (e) {
-    // Fallback paling aman
-    return window.location.href.split("?")[0].split("#")[0]
-      .replace(/\/(index(\.html)?)?$/, "/") + "ambil-barang";
+    return OFFICIAL_PUBLIC_URL;
   }
 }
 
@@ -2821,11 +2814,29 @@ function openCabinetQrModal() {
   }, 80);
 }
 
+function setTargetQrPreset(presetType) {
+  const input = document.getElementById("targetQrUrlInput");
+  if (!input) return;
+  if (presetType === "vercel") {
+    input.value = OFFICIAL_PUBLIC_URL;
+  } else if (presetType === "current") {
+    const loc = window.location;
+    if (loc.origin && loc.origin !== "null" && loc.protocol.startsWith("http")) {
+      input.value = `${loc.origin}/ambil-barang.html`;
+    } else {
+      input.value = OFFICIAL_PUBLIC_URL;
+    }
+  }
+  handleUpdateTargetQrUrl();
+}
+
 function handleUpdateTargetQrUrl() {
   const input = document.getElementById("targetQrUrlInput");
   if (!input || !input.value.trim()) return;
-  renderCabinetQrCode(input.value.trim());
-  showToast("Tampilan barcode berhasil diperbarui!", "success");
+  const newUrl = input.value.trim();
+  localStorage.setItem("sim_custom_qr_url", newUrl);
+  renderCabinetQrCode(newUrl);
+  showToast("Barcode diperbarui ke: " + newUrl, "success");
 }
 
 function printCabinetSticker() {
