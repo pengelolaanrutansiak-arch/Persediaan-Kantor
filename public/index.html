@@ -812,6 +812,98 @@
               </div>
 
             </div>
+
+            <!-- PANEL KHUSUS: FILTER MUTASI KELUAR / MASUK BERDASARKAN TANGGAL, BULAN, DAN TAHUN -->
+            <div id="mutasiFilterPanel"
+              style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:12px; align-items:center;">
+              
+              <!-- Pilihan Jenis Mutasi -->
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label for="reportMutasiJenis"
+                  style="font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap;">
+                  <i class="bi bi-arrow-left-right" style="color:#0ea5e9;"></i> Jenis Mutasi:
+                </label>
+                <select class="form-control" id="reportMutasiJenis" style="font-size:12px; padding:6px 10px;"
+                  onchange="handleReportFormatChange()">
+                  <option value="ALL">Semua Mutasi (Masuk &amp; Keluar)</option>
+                  <option value="MASUK">Hanya Mutasi Masuk (+ Penerimaan)</option>
+                  <option value="KELUAR">Hanya Mutasi Keluar (- Pengeluaran/Mandiri)</option>
+                </select>
+              </div>
+
+              <!-- Pilihan Bulan -->
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label for="reportMutasiBulan"
+                  style="font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap;">
+                  <i class="bi bi-calendar3" style="color:#f59e0b;"></i> Bulan:
+                </label>
+                <select class="form-control" id="reportMutasiBulan" style="font-size:12px; padding:6px 10px;"
+                  onchange="handleReportFormatChange()">
+                  <option value="ALL">Semua Bulan</option>
+                  <option value="01">Januari</option>
+                  <option value="02">Februari</option>
+                  <option value="03">Maret</option>
+                  <option value="04">April</option>
+                  <option value="05">Mei</option>
+                  <option value="06">Juni</option>
+                  <option value="07">Juli</option>
+                  <option value="08">Agustus</option>
+                  <option value="09">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
+                </select>
+              </div>
+
+              <!-- Pilihan Tahun -->
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label for="reportMutasiTahun"
+                  style="font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap;">
+                  Tahun:
+                </label>
+                <select class="form-control" id="reportMutasiTahun" style="font-size:12px; padding:6px 10px; width:100px;"
+                  onchange="handleReportFormatChange()">
+                  <option value="ALL">Semua</option>
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+
+              <!-- Pilihan Rentang Tanggal Spesifik -->
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap;">
+                  <i class="bi bi-calendar-range" style="color:#10b981;"></i> Rentang Tgl:
+                </label>
+                <input type="date" id="reportMutasiDateStart" class="form-control"
+                  style="font-size:11.5px; padding:5px 8px; width:135px;" onchange="handleReportFormatChange()"
+                  title="Tanggal Mulai">
+                <span style="font-size:11px; color:var(--text-muted);">s/d</span>
+                <input type="date" id="reportMutasiDateEnd" class="form-control"
+                  style="font-size:11.5px; padding:5px 8px; width:135px;" onchange="handleReportFormatChange()"
+                  title="Tanggal Akhir">
+                <button type="button" class="btn-secondary" onclick="resetMutasiDateRange()"
+                  style="padding:5px 9px; font-size:11px;" title="Reset Rentang Tanggal">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </div>
+
+              <!-- Tombol Cepat Filter -->
+              <div style="display:flex; gap:6px; margin-left:auto; flex-wrap:wrap;">
+                <button type="button" class="btn-secondary" onclick="setMutasiQuickFilter('all')"
+                  style="padding:4px 8px; font-size:11px;">Semua</button>
+                <button type="button" class="btn-secondary" onclick="setMutasiQuickFilter('today')"
+                  style="padding:4px 8px; font-size:11px;">Hari Ini</button>
+                <button type="button" class="btn-secondary" onclick="setMutasiQuickFilter('this_month')"
+                  style="padding:4px 8px; font-size:11px;">Bulan Ini</button>
+                <button type="button" class="btn-secondary" onclick="setMutasiQuickFilter('masuk')"
+                  style="padding:4px 8px; font-size:11px; color:#34d399; font-weight:600;">+ Masuk Saja</button>
+                <button type="button" class="btn-secondary" onclick="setMutasiQuickFilter('keluar')"
+                  style="padding:4px 8px; font-size:11px; color:#f87171; font-weight:600;">- Keluar Saja</button>
+              </div>
+
+            </div>
           </div>
 
           <!-- Official Document Live Preview Container -->
