@@ -1791,6 +1791,20 @@
         supabase.from("transactions").insert([newTransaction]).then(({ error: trxErr }) => {
           if (trxErr) {
             console.error("Gagal catat transaksi ke Supabase:", trxErr);
+            // Fallback 1: Coba simpan tanpa signature jika kolom signature belum dibuat di tabel
+            const fallbackTrx = { ...newTransaction };
+            delete fallbackTrx.signature;
+            supabase.from("transactions").insert([fallbackTrx]).then(({ error: err2 }) => {
+              if (err2) {
+                console.error("Retry insert transaksi tanpa signature juga gagal:", err2);
+                // Fallback 2: Coba tanpa barangId (jika ada kendala foreign key constraint)
+                const simpleTrx = { ...fallbackTrx };
+                delete simpleTrx.barangId;
+                supabase.from("transactions").insert([simpleTrx]).catch(() => {});
+              } else {
+                console.log("Transaksi fallback berhasil dicatat di Supabase Cloud.");
+              }
+            }).catch(() => {});
           } else {
             console.log("Transaksi berhasil dicatat di Supabase Cloud.");
           }
