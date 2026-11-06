@@ -1255,17 +1255,35 @@
       const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
       if (supabase) {
         try {
-          const { data, error } = await supabase.from("inventory").select("*").order("id", { ascending: true });
-          if (!error && Array.isArray(data) && data.length > 0) {
-            inventoryData = data;
+          // Ambil seluruh data master persediaan secara berurutan (batch 1000 item)
+          let allData = [];
+          let from = 0;
+          const step = 1000;
+          while (true) {
+            const { data, error } = await supabase
+              .from("inventory")
+              .select("*")
+              .order("id", { ascending: true })
+              .range(from, from + step - 1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            allData = allData.concat(data);
+            if (data.length < step) break;
+            from += step;
+          }
+
+          if (allData.length > 0) {
+            inventoryData = allData;
             localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
             updateServerBadge(true, "Supabase Cloud Terhubung");
+            removeOfflineWarning();
             renderItemList();
             subscribeSupabaseRealtimePhone(supabase);
             return;
           }
-          // Supabase terhubung tapi data kosong — kemungkinan tabel belum diisi
-          if (!error && Array.isArray(data) && data.length === 0) {
+          // Supabase terhubung tapi data kosong
+          if (allData.length === 0) {
             updateServerBadge(false, "⚠ Supabase kosong — muat data dari cache");
           }
         } catch (err) {
@@ -1286,7 +1304,6 @@
               if (!error && Array.isArray(data) && data.length > 0) {
                 inventoryData = data;
                 localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
-                // Simpan juga untuk next visit
                 localStorage.setItem("sim_supabase_url", decoded.u);
                 localStorage.setItem("sim_supabase_anon_key", decoded.k);
                 if (window.SUPABASE_CONFIG) {
@@ -1294,6 +1311,7 @@
                   window.SUPABASE_CONFIG.anonKey = decoded.k;
                 }
                 updateServerBadge(true, "Supabase Cloud Terhubung");
+                removeOfflineWarning();
                 renderItemList();
                 subscribeSupabaseRealtimePhone(fallbackClient);
                 return;
@@ -1314,6 +1332,7 @@
             localStorage.setItem("sim_rutan_inventory", JSON.stringify(inventoryData));
             localStorage.setItem("sim_rutan_transactions", JSON.stringify(transactionsData));
             updateServerBadge(true, "Server Lokal Terhubung");
+            removeOfflineWarning();
             renderItemList();
             connectRealtimeSSE();
             return;
@@ -1323,7 +1342,6 @@
 
       // 3. Mode offline — data dari cache perangkat ini
       updateServerBadge(false);
-      // Tampilkan info jika stok di cache mungkin sudah usang
       showOfflineWarning();
     }
 
@@ -1337,11 +1355,15 @@
         <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;margin-top:1px;flex-shrink:0;"></i>
         <div>
           <strong>Mode Offline — Data mungkin belum diperbarui.</strong><br>
-          Perangkat ini belum terhubung ke Supabase Cloud. Hubungi Admin untuk melakukan
-          <em>"Download supabase-config.js"</em> dan deploy ulang ke Vercel agar sinkronisasi otomatis.
+          Perangkat ini belum terhubung ke Supabase Cloud. Pastikan koneksi internet stabil atau hubungi Administrator persediaan.
         </div>`;
       const formArea = document.querySelector(".form-card") || document.querySelector(".main-form") || document.body;
       formArea.prepend(banner);
+    }
+
+    function removeOfflineWarning() {
+      const existing = document.getElementById("offlineWarningBanner");
+      if (existing) existing.remove();
     }
 
     function updateServerBadge(isOnline, labelText) {
@@ -1356,18 +1378,38 @@
       }
     }
 
+    // Render ulang daftar barang sesuai pencarian & update pilihan aktif
+    function renderItemList() {
+      const input = document.getElementById("searchBarangInput");
+      const q = input ? input.value.trim().toLowerCase() : "";
+      renderSearchResults(q);
+      if (selectedItem) {
+        const updated = inventoryData.find(i => String(i.id) === String(selectedItem.id));
+        if (updated) {
+          selectedItem = updated;
+          const cardStock = document.getElementById("cardStokTersedia");
+          if (cardStock) cardStock.textContent = `${updated.stokAkhir} ${updated.satuan}`;
+        }
+      }
+    }
+
     function subscribeSupabaseRealtimePhone(supabase) {
       try {
         supabase.channel("phone_inventory_realtime")
           .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, (payload) => {
             if (payload.eventType === "UPDATE" && payload.new) {
-              const idx = inventoryData.findIndex(i => i.id === payload.new.id);
+              const idx = inventoryData.findIndex(i => String(i.id) === String(payload.new.id));
               if (idx !== -1) {
-                inventoryData[idx] = payload.new;
+                inventoryData[idx] = { ...inventoryData[idx], ...payload.new };
                 renderItemList();
               }
             } else if (payload.eventType === "INSERT" && payload.new) {
-              inventoryData.push(payload.new);
+              const idx = inventoryData.findIndex(i => String(i.id) === String(payload.new.id));
+              if (idx === -1) {
+                inventoryData.push(payload.new);
+              } else {
+                inventoryData[idx] = { ...inventoryData[idx], ...payload.new };
+              }
               renderItemList();
             }
           })
@@ -1729,17 +1771,30 @@
       const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
       if (supabase) {
         supabase.from("inventory").update({
-          stokAkhir: selectedItem.stokAkhir,
-          stokKeluar: selectedItem.stokKeluar,
+          stokAkhir: Number(selectedItem.stokAkhir),
+          stokKeluar: Number(selectedItem.stokKeluar),
           kondisi: selectedItem.stokAkhir > 0 ? "Tersedia" : "Habis",
           updated_at: new Date().toISOString()
-        }).eq("id", selectedItem.id).then(() => {
-          updateServerBadge(true, "Supabase Terhubung");
+        }).eq("id", Number(selectedItem.id)).then(({ error: invErr }) => {
+          if (invErr) {
+            console.error("Gagal update stok ke Supabase:", invErr);
+            showToast("Gagal update stok ke cloud: " + invErr.message, "danger");
+          } else {
+            console.log("Stok berhasil diperbarui di Supabase Cloud.");
+            updateServerBadge(true, "Supabase Cloud Terhubung");
+            removeOfflineWarning();
+          }
         }).catch(err => {
           console.warn("Gagal update item ke Supabase:", err);
         });
 
-        supabase.from("transactions").insert([newTransaction]).catch(err => {
+        supabase.from("transactions").insert([newTransaction]).then(({ error: trxErr }) => {
+          if (trxErr) {
+            console.error("Gagal catat transaksi ke Supabase:", trxErr);
+          } else {
+            console.log("Transaksi berhasil dicatat di Supabase Cloud.");
+          }
+        }).catch(err => {
           console.warn("Gagal insert transaksi ke Supabase:", err);
         });
       }
