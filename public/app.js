@@ -488,8 +488,10 @@ async function checkAndConnectDatabase() {
   // JALUR 1: Jika Supabase Cloud telah dikonfigurasi
   if (supabase) {
     updateDbStatusUI("syncing", "Menghubungkan Supabase Cloud...");
+    let connectedToSupabase = false;
+
+    // 1. Ambil data inventory dari Supabase
     try {
-      // Ambil seluruh data inventory dari Supabase (batch 1000 agar tidak terpotong)
       let allInv = [];
       let from = 0;
       const step = 1000;
@@ -510,25 +512,44 @@ async function checkAndConnectDatabase() {
         AppState.inventory = allInv;
         localStorage.setItem("sim_rutan_inventory", JSON.stringify(allInv));
       }
+      connectedToSupabase = true;
+    } catch (errInv) {
+      console.warn("Supabase inventory fetch note:", errInv.message);
+    }
 
-      // Ambil data transactions dari Supabase
-      const { data: trxData } = await supabase
+    // 2. Ambil data transactions dari Supabase
+    try {
+      let { data: trxData, error: trxErr } = await supabase
         .from("transactions")
         .select("*")
         .order("created_at", { ascending: false });
 
+      if (trxErr) {
+        // Fallback jika created_at belum ada
+        const res = await supabase.from("transactions").select("*");
+        trxData = res.data;
+      }
+
       if (trxData && trxData.length > 0) {
         AppState.transactions = trxData;
         localStorage.setItem("sim_rutan_transactions", JSON.stringify(trxData));
+        connectedToSupabase = true;
       }
+    } catch (errTrx) {
+      console.warn("Supabase transactions fetch note:", errTrx.message);
+    }
 
-      // Ambil data officers dari Supabase
+    // 3. Ambil data officers dari Supabase
+    try {
       const { data: offData } = await supabase.from("officers").select("*");
       if (offData && offData.length > 0) {
         AppState.officers = offData;
         localStorage.setItem("sim_rutan_officers", JSON.stringify(offData));
+        connectedToSupabase = true;
       }
+    } catch (errOff) { }
 
+    if (connectedToSupabase) {
       AppState.serverConnected = true;
       AppState.syncSource = "supabase";
       updateDbStatusUI("online", "Supabase Cloud: Real-Time Aktif");
@@ -541,9 +562,6 @@ async function checkAndConnectDatabase() {
       subscribeSupabaseRealtime(supabase);
       startRealtimeListener();
       return;
-    } catch (err) {
-      console.warn("Gagal terhubung ke Supabase:", err.message);
-      // Lanjut ke fallback server lokal
     }
   }
 
@@ -663,11 +681,16 @@ function startRealtimeListener() {
       const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
       if (supabase) {
         try {
-          const { data: latestTrx } = await supabase
+          let { data: latestTrx, error: pollErr } = await supabase
             .from("transactions")
             .select("*")
             .order("created_at", { ascending: false })
             .limit(10);
+
+          if (pollErr) {
+            const fallbackPoll = await supabase.from("transactions").select("*").limit(10);
+            latestTrx = fallbackPoll.data;
+          }
 
           if (latestTrx && latestTrx.length > 0) {
             let hasNew = false;
@@ -1403,6 +1426,17 @@ function filterByCategoryTab(cat) {
 // ----------------------------------------------------
 // TRANSACTIONS TABLE RENDERING
 // ----------------------------------------------------
+function escapeHtml(str) {
+  return escapeHtmlSafe(str);
+}
+
+function openSignatureByTrxId(trxId) {
+  const trx = AppState.transactions.find(t => String(t.id) === String(trxId));
+  if (trx && trx.signature) {
+    previewSignature(trx.signature, trx.penerima || trx.petugas);
+  }
+}
+
 function renderTransactionsTable() {
   const tbody = document.getElementById("transactionsTableBody");
   if (!tbody) return;
@@ -1434,7 +1468,7 @@ function renderTransactionsTable() {
     let parafBtn = "";
     if (trx.signature) {
       parafBtn = `
-        <button type="button" class="btn-text-link" style="margin-left:6px;color:#0d9488;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;" onclick="previewSignature('${trx.signature}', '${escapeHtml(trx.petugas || trx.penerima)}')">
+        <button type="button" class="btn-text-link" style="margin-left:6px;color:#0d9488;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;" onclick="openSignatureByTrxId('${trx.id}')">
           <i class="bi bi-pen"></i> Paraf
         </button>
       `;
@@ -1443,16 +1477,16 @@ function renderTransactionsTable() {
     return `
       <tr>
         <td style="font-size:12px;color:var(--text-muted);">${idx + 1}</td>
-        <td style="font-size:12px;white-space:nowrap;">${trx.tanggal}</td>
-        <td class="code-cell" style="font-size:11.5px;">${trx.noDok}</td>
-        <td class="item-name-cell">${trx.namaBarang}</td>
+        <td style="font-size:12px;white-space:nowrap;">${trx.tanggal || '-'}</td>
+        <td class="code-cell" style="font-size:11.5px;">${trx.noDok || '-'}</td>
+        <td class="item-name-cell">${trx.namaBarang || '-'}</td>
         <td>${jenisBadge}</td>
         <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${trx.jenis === 'MASUK' ? '#059669' : '#e11d48'};">
-          ${trx.jenis === 'MASUK' ? '+' : '-'}${trx.jumlah} ${trx.satuan}
+          ${trx.jenis === 'MASUK' ? '+' : '-'}${trx.jumlah || 0} ${trx.satuan || 'PCS'}
         </td>
-        <td style="font-size:12px;">${trx.tujuan || trx.sumber}</td>
+        <td style="font-size:12px;">${trx.tujuan || trx.sumber || '-'}</td>
         <td style="font-size:12px;color:var(--text-muted);">
-          <span>${trx.petugas ? trx.petugas.split(',')[0] : '-'}</span>
+          <span>${trx.petugas ? trx.petugas.split(',')[0] : (trx.penerima || '-')}</span>
           ${parafBtn}
         </td>
       </tr>
