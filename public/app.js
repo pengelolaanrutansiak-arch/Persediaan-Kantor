@@ -489,20 +489,26 @@ async function checkAndConnectDatabase() {
   if (supabase) {
     updateDbStatusUI("syncing", "Menghubungkan Supabase Cloud...");
     try {
-      // Ambil data inventory dari Supabase
-      const { data: invData, error: errInv } = await supabase
-        .from("inventory")
-        .select("*")
-        .order("id", { ascending: true });
-
-      if (errInv) {
-        console.warn("Supabase query error:", errInv.message);
-        throw errInv;
+      // Ambil seluruh data inventory dari Supabase (batch 1000 agar tidak terpotong)
+      let allInv = [];
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select("*")
+          .order("id", { ascending: true })
+          .range(from, from + step - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allInv = allInv.concat(data);
+        if (data.length < step) break;
+        from += step;
       }
 
-      if (invData && invData.length > 0) {
-        AppState.inventory = invData;
-        localStorage.setItem("sim_rutan_inventory", JSON.stringify(invData));
+      if (allInv.length > 0) {
+        AppState.inventory = allInv;
+        localStorage.setItem("sim_rutan_inventory", JSON.stringify(allInv));
       }
 
       // Ambil data transactions dari Supabase
@@ -531,8 +537,9 @@ async function checkAndConnectDatabase() {
         renderApp();
       }
 
-      // Aktifkan Real-Time Listener Supabase
+      // Aktifkan Real-Time Listener Supabase & Polling Cadangan
       subscribeSupabaseRealtime(supabase);
+      startRealtimeListener();
       return;
     } catch (err) {
       console.warn("Gagal terhubung ke Supabase:", err.message);
@@ -596,16 +603,16 @@ function subscribeSupabaseRealtime(supabase) {
       .channel("sim_persediaan_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, (payload) => {
         if (payload.eventType === "UPDATE" && payload.new) {
-          const idx = AppState.inventory.findIndex(i => i.id === payload.new.id);
+          const idx = AppState.inventory.findIndex(i => String(i.id) === String(payload.new.id));
           if (idx !== -1) {
-            AppState.inventory[idx] = payload.new;
+            AppState.inventory[idx] = { ...AppState.inventory[idx], ...payload.new };
           } else {
             AppState.inventory.push(payload.new);
           }
           localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
           if (AppState.isAuthenticated) renderApp();
         } else if (payload.eventType === "INSERT" && payload.new) {
-          const idx = AppState.inventory.findIndex(i => i.id === payload.new.id);
+          const idx = AppState.inventory.findIndex(i => String(i.id) === String(payload.new.id));
           if (idx === -1) {
             AppState.inventory.push(payload.new);
             localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
@@ -615,7 +622,7 @@ function subscribeSupabaseRealtime(supabase) {
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "transactions" }, (payload) => {
         if (payload.new) {
-          const exists = AppState.transactions.some(t => t.id === payload.new.id);
+          const exists = AppState.transactions.some(t => String(t.id) === String(payload.new.id));
           if (!exists) {
             AppState.transactions.unshift(payload.new);
             localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
@@ -636,7 +643,7 @@ function subscribeSupabaseRealtime(supabase) {
   }
 }
 
-// Fallback Server Lokal SSE & Polling
+// Sinkronisasi Real-time Cadangan (Polling & SSE)
 function startRealtimeListener() {
   if (window.EventSource) {
     try {
@@ -651,6 +658,50 @@ function startRealtimeListener() {
 
   if (AppState.pollTimer) clearInterval(AppState.pollTimer);
   AppState.pollTimer = setInterval(async () => {
+    // 1. Polling Supabase Cloud setiap 4 detik (Double-protection jika WebSocket jeda)
+    if (AppState.syncSource === "supabase") {
+      const supabase = typeof getSupabaseClient === "function" ? getSupabaseClient() : null;
+      if (supabase) {
+        try {
+          const { data: latestTrx } = await supabase
+            .from("transactions")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          if (latestTrx && latestTrx.length > 0) {
+            let hasNew = false;
+            for (const trx of latestTrx) {
+              if (!AppState.transactions.some(t => String(t.id) === String(trx.id))) {
+                AppState.transactions.unshift(trx);
+                hasNew = true;
+              }
+            }
+            if (hasNew) {
+              const itemIds = [...new Set(latestTrx.map(t => t.barangId).filter(Boolean))];
+              if (itemIds.length > 0) {
+                const { data: updatedItems } = await supabase
+                  .from("inventory")
+                  .select("*")
+                  .in("id", itemIds);
+                if (updatedItems && updatedItems.length > 0) {
+                  for (const u of updatedItems) {
+                    const idx = AppState.inventory.findIndex(i => String(i.id) === String(u.id));
+                    if (idx !== -1) AppState.inventory[idx] = { ...AppState.inventory[idx], ...u };
+                  }
+                }
+              }
+              localStorage.setItem("sim_rutan_inventory", JSON.stringify(AppState.inventory));
+              localStorage.setItem("sim_rutan_transactions", JSON.stringify(AppState.transactions));
+              if (AppState.isAuthenticated) renderApp();
+            }
+          }
+        } catch (_) {}
+      }
+      return;
+    }
+
+    // 2. Polling Server Komputer Lokal
     if (!AppState.serverConnected || AppState.syncSource !== "local_server") return;
     try {
       const res = await fetch(`/api/sync-poll?since=${AppState.lastSyncTimestamp || 0}`, { cache: "no-store" });
@@ -662,7 +713,7 @@ function startRealtimeListener() {
         }
       }
     } catch (_) { }
-  }, 3000);
+  }, 4000);
 }
 
 async function reloadFromServerSilently(noticeText) {
@@ -2848,5 +2899,12 @@ function previewSignature(sigUrl, officerName) {
   if (meta) meta.innerText = "Paraf digital oleh: " + (officerName || "Pegawai");
   openModal("modalPreviewSig");
 }
+
+// Auto-refresh sinkronisasi data saat pengguna kembali ke tab website
+window.addEventListener("focus", () => {
+  if (AppState.isAuthenticated && AppState.syncSource === "supabase") {
+    checkAndConnectDatabase();
+  }
+});
 
 
